@@ -7,6 +7,7 @@ var singleCellSelection = (context, activeCell) => ({
 });
 var areasEqual = (a, b) => a === b || a.r0 === b.r0 && a.r1 === b.r1 && a.c0 === b.c0 && a.c1 === b.c1;
 var areaContainsCell = (area, { r, c }) => r >= area.r0 && r <= area.r1 && c >= area.c0 && c <= area.c1;
+var isTouchEvent = (e) => e.pointerType === "touch" || e.pointerType === "pen";
 var handleDrag = (onMove, onEnd) => {
   const abortController = new AbortController();
   const abort = (e) => {
@@ -50,7 +51,7 @@ var handlePointerEvents = (signal, context, getSelection, setSelection) => (
   context.rootElement.addEventListener(
     "pointerdown",
     (e) => {
-      if (e.pointerType === "touch" || e.pointerType === "pen") {
+      if (isTouchEvent(e)) {
         return;
       }
       let activeCellArea = context.getCellAreaFromPoint(e);
@@ -119,34 +120,34 @@ var handleTouchEvents = (signal, context, setSelection) => {
     signal
   });
   context.rootElement.addEventListener(
-    "pointerdown",
+    "pointerup",
     (e) => {
-      if (!(e.pointerType === "touch" || e.pointerType === "pen")) {
+      if (isTouchEvent(e)) {
+        const area = context.getCellAreaFromPoint(e);
+        if (area) {
+          _setSelection(area);
+          e.currentTarget.parentElement.append(touchHandleContainer);
+        }
+      } else {
         hideTouchHandle();
-        return;
-      }
-      const area = context.getCellAreaFromPoint(e);
-      if (area) {
-        _setSelection(area);
-        e.currentTarget.parentElement.append(touchHandleContainer);
       }
     },
     { signal }
   );
   g2.addEventListener("pointerdown", (e) => {
-    if (!selection || !(e.pointerType === "touch" || e.pointerType === "pen")) {
+    if (selection && isTouchEvent(e)) {
+      const activeCellArea = context.getCellArea(selection.activeCell.r, selection.activeCell.c);
+      let previousPointedCellArea;
+      handleDrag(
+        (e2) => {
+          const area = context.getCellAreaFromPoint(e2);
+          area && !(previousPointedCellArea && areasEqual(area, previousPointedCellArea)) && _setSelection(enclosingArea(context, activeCellArea, previousPointedCellArea = area), selection.activeCell);
+        },
+        () => _setSelection(selection.areas[0])
+      );
+    } else {
       hideTouchHandle();
-      return;
     }
-    const activeCellArea = context.getCellArea(selection.activeCell.r, selection.activeCell.c);
-    let previousPointedCellArea;
-    handleDrag(
-      (e2) => {
-        const area = context.getCellAreaFromPoint(e2);
-        area && !(previousPointedCellArea && areasEqual(area, previousPointedCellArea)) && _setSelection(enclosingArea(context, activeCellArea, previousPointedCellArea = area), selection.activeCell);
-      },
-      () => _setSelection(selection.areas[0])
-    );
   });
 };
 

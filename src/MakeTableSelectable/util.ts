@@ -12,6 +12,8 @@ export const areasEqual = (a: GridArea, b: GridArea) => a === b || (a.r0 === b.r
 
 export const areaContainsCell = (area: GridArea, { r, c }: GridCell) => r >= area.r0 && r <= area.r1 && c >= area.c0 && c <= area.c1;
 
+export const isTouchEvent = (e: PointerEvent) => e.pointerType === "touch" || e.pointerType === "pen";
+
 export const handleDrag = (onMove: (e: PointerEvent) => unknown, onEnd?: (e: PointerEvent) => unknown) => {
   const abortController = new AbortController();
   const abort = (e: PointerEvent) => {

@@ -1,5 +1,5 @@
 import type { GridArea, GridCell, GridContext, GridSelection } from "./types.js";
-import { areasEqual, enclosingArea, handleDrag, rc } from "./util.js";
+import { areasEqual, enclosingArea, handleDrag, isTouchEvent, rc } from "./util.js";
 
 const touchHandleContainerStyles: Partial<CSSStyleDeclaration> = {
   position: "absolute",
@@ -36,36 +36,36 @@ export const handleTouchEvents = (signal: AbortSignal, context: GridContext, set
   });
 
   context.rootElement.addEventListener(
-    "pointerdown",
+    "pointerup",
     e => {
-      if (!(e.pointerType === "touch" || e.pointerType === "pen")) {
+      if (isTouchEvent(e)) {
+        const area = context.getCellAreaFromPoint(e);
+        if (area) {
+          _setSelection(area);
+          (e.currentTarget as Element).parentElement!.append(touchHandleContainer);
+        }
+      } else {
         hideTouchHandle();
-        return;
-      }
-      const area = context.getCellAreaFromPoint(e);
-      if (area) {
-        _setSelection(area);
-        (e.currentTarget as Element).parentElement!.append(touchHandleContainer);
       }
     },
     { signal },
   );
 
   g2.addEventListener("pointerdown", e => {
-    if (!selection || !(e.pointerType === "touch" || e.pointerType === "pen")) {
+    if (selection && isTouchEvent(e)) {
+      const activeCellArea = context.getCellArea(selection.activeCell.r, selection.activeCell.c);
+      let previousPointedCellArea: GridArea | undefined;
+      handleDrag(
+        e => {
+          const area = context.getCellAreaFromPoint(e);
+          area &&
+            !(previousPointedCellArea && areasEqual(area, previousPointedCellArea)) &&
+            _setSelection(enclosingArea(context, activeCellArea, (previousPointedCellArea = area)), selection!.activeCell);
+        },
+        () => _setSelection(selection!.areas[0]!),
+      );
+    } else {
       hideTouchHandle();
-      return;
     }
-    const activeCellArea = context.getCellArea(selection.activeCell.r, selection.activeCell.c);
-    let previousPointedCellArea: GridArea | undefined;
-    handleDrag(
-      e => {
-        const area = context.getCellAreaFromPoint(e);
-        area &&
-          !(previousPointedCellArea && areasEqual(area, previousPointedCellArea)) &&
-          _setSelection(enclosingArea(context, activeCellArea, (previousPointedCellArea = area)), selection!.activeCell);
-      },
-      () => _setSelection(selection!.areas[0]!),
-    );
   });
 };

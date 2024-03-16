@@ -1,5 +1,5 @@
 import type { GridContext, GridSelection } from "./types.js";
-import { areaContainsCell, areasEqual, enclosingArea, handleDrag, rc } from "./util.js";
+import { areaContainsCell, areasEqual, enclosingArea, handleDrag, isTouchEvent, rc } from "./util.js";
 
 export const handlePointerEvents = (
   signal: AbortSignal,
@@ -11,7 +11,7 @@ export const handlePointerEvents = (
   context.rootElement.addEventListener(
     "pointerdown",
     e => {
-      if (e.pointerType === "touch" || e.pointerType === "pen") {
+      if (isTouchEvent(e)) {
         return;
       }
       let activeCellArea = context.getCellAreaFromPoint(e);
