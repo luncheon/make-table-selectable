@@ -561,7 +561,7 @@ var SelectedArea = class {
 var MakeTableSelectable = class {
   constructor(options) {
     this.options = options;
-    const signal = options.signal;
+    const signal = this.#destroyController.signal;
     const context = options.context;
     const setSelection = (selection) => this.#setSelection(selection);
     this.render();
@@ -572,6 +572,7 @@ var MakeTableSelectable = class {
     handleTouchEvents(signal, context, setSelection);
   }
   keyboardShortcuts = keyboardShortcuts();
+  #destroyController = new AbortController();
   #selection;
   get activeCellAddress() {
     return this.#selection?.activeCell;
@@ -593,8 +594,12 @@ var MakeTableSelectable = class {
   get expandMode() {
     return this.#selection?.extendMode;
   }
+  destroy() {
+    this.#destroyController.abort();
+    this.options.renderer.destroy();
+  }
   render() {
-    this.options.render(this.#selection);
+    this.options.renderer.render(this.options.context, this.#selection);
   }
   keydown(e) {
     const selection = this.#selection;
@@ -626,69 +631,14 @@ var MakeTableSelectable = class {
   }
 };
 
-// src/renderer.ts
-var overlayStyleBase = {
-  boxSizing: "border-box",
-  pointerEvents: "none",
-  position: "absolute",
-  border: "0 solid rgba(0, 128, 255, 0.2)",
-  outline: "auto 2px rgb(0, 128, 255)",
-  outlineOffset: "-1px",
-  background: "rgba(128, 224, 255, 0.2)"
-  // transitionProperty: "left,top,width,height,border-width",
-  // transitionDuration: "64ms",
-  // transitionTimingFunction: "linear",
-};
-var h = (tagName, style) => {
-  const overlay = document.createElement(tagName);
-  Object.assign(overlay.style, style);
-  return overlay;
-};
-var renderer = (signal, context) => {
-  const overlayContainer = context.rootElement.parentElement.appendChild(document.createElement("div"));
-  signal.addEventListener("abort", () => overlayContainer.remove(), { once: true });
-  return (selection) => {
-    if (!selection) {
-      overlayContainer.innerHTML = "";
-      return;
-    }
-    const areas = selection.areas;
-    while (overlayContainer.children.length > areas.length) {
-      overlayContainer.lastElementChild.remove();
-    }
-    let overlay = overlayContainer.firstElementChild;
-    for (let i = 0; i < areas.length; i++) {
-      const rect = context.getAreaRect(areas[i]);
-      const overlayStyle = (overlay ??= overlayContainer.appendChild(h("div", overlayStyleBase))).style;
-      overlayStyle.left = `${rect.x}px`;
-      overlayStyle.top = `${rect.y}px`;
-      overlayStyle.width = `${rect.w}px`;
-      overlayStyle.height = `${rect.h}px`;
-      if (i === 0) {
-        const activeCell = selection.activeCell;
-        const activeRect = context.getAreaRect(context.getCellArea(activeCell.r, activeCell.c));
-        overlayStyle.borderWidth = `${activeRect.y - rect.y}px ${rect.x + rect.w - activeRect.x - activeRect.w}px ${rect.y + rect.h - activeRect.y - activeRect.h}px ${activeRect.x - rect.x}px`;
-      } else {
-        overlayStyle.borderWidth = `${rect.h / 2}px ${rect.w / 2}px`;
-      }
-      overlay = overlay.nextElementSibling;
-    }
-  };
-};
-
 // src/makeTableSelectable.ts
-var makeTableSelectable = (options) => {
-  const signal = options.signal ?? new AbortController().signal;
-  return new MakeTableSelectable({
-    signal,
-    render: renderer(signal, options.context),
-    onActiveCellChanged: (selectable) => {
-      selectable.activeCellElement?.scrollIntoView({ block: "nearest" });
-      options.onActiveCellChanged?.(selectable);
-    },
-    ...options
-  });
-};
+var makeTableSelectable = (options) => new MakeTableSelectable({
+  onActiveCellChanged: (selectable) => {
+    selectable.activeCellElement?.scrollIntoView({ block: "nearest" });
+    options.onActiveCellChanged?.(selectable);
+  },
+  ...options
+});
 
 // node_modules/despan/index.js
 function despan(table) {
@@ -766,7 +716,61 @@ var MergeableTableGridContext = class {
     return td && this.#cellAreaMap.get(td);
   }
 };
+
+// src/DefaultRenderer.ts
+var overlayStyleBase = {
+  boxSizing: "border-box",
+  pointerEvents: "none",
+  position: "absolute",
+  border: "0 solid rgba(0, 128, 255, 0.2)",
+  outline: "auto 2px rgb(0, 128, 255)",
+  outlineOffset: "-1px",
+  background: "rgba(128, 224, 255, 0.2)"
+  // transitionProperty: "left,top,width,height,border-width",
+  // transitionDuration: "64ms",
+  // transitionTimingFunction: "linear",
+};
+var h = (tagName, style) => {
+  const overlay = document.createElement(tagName);
+  Object.assign(overlay.style, style);
+  return overlay;
+};
+var DefaultRenderer = class {
+  #overlayContainer;
+  destroy() {
+    this.#overlayContainer?.remove();
+  }
+  render(context, selection) {
+    const overlayContainer = this.#overlayContainer ??= context.rootElement.parentElement.appendChild(document.createElement("div"));
+    if (!selection) {
+      overlayContainer.innerHTML = "";
+      return;
+    }
+    const areas = selection.areas;
+    while (overlayContainer.children.length > areas.length) {
+      overlayContainer.lastElementChild.remove();
+    }
+    let overlay = overlayContainer.firstElementChild;
+    for (let i = 0; i < areas.length; i++) {
+      const rect = context.getAreaRect(areas[i]);
+      const overlayStyle = (overlay ??= overlayContainer.appendChild(h("div", overlayStyleBase))).style;
+      overlayStyle.left = `${rect.x}px`;
+      overlayStyle.top = `${rect.y}px`;
+      overlayStyle.width = `${rect.w}px`;
+      overlayStyle.height = `${rect.h}px`;
+      if (i === 0) {
+        const activeCell = selection.activeCell;
+        const activeRect = context.getAreaRect(context.getCellArea(activeCell.r, activeCell.c));
+        overlayStyle.borderWidth = `${activeRect.y - rect.y}px ${rect.x + rect.w - activeRect.x - activeRect.w}px ${rect.y + rect.h - activeRect.y - activeRect.h}px ${activeRect.x - rect.x}px`;
+      } else {
+        overlayStyle.borderWidth = `${rect.h / 2}px ${rect.w / 2}px`;
+      }
+      overlay = overlay.nextElementSibling;
+    }
+  }
+};
 export {
+  DefaultRenderer,
   MergeableTableGridContext,
   makeTableSelectable
 };

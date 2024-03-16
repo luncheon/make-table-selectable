@@ -1,7 +1,7 @@
 import { handlePointerEvents } from "./handlePointerEvents.js";
 import { handleTouchEvents } from "./handleTouchEvents.js";
 import { keyboardShortcuts } from "./keyboardShortcuts.js";
-import type { GridArea, GridContext, GridSelection } from "./types.js";
+import type { GridArea, GridContext, GridRenderer, GridSelection } from "./types.js";
 import { areasEqual } from "./util.js";
 
 export class SelectedRow<CellElement> {
@@ -53,9 +53,8 @@ export class SelectedArea<CellElement> {
 }
 
 export type MakeTableSelectableOptions<CellElement> = {
-  readonly signal: AbortSignal;
   readonly context: GridContext<CellElement>;
-  readonly render: (selection: GridSelection | undefined) => void;
+  readonly renderer: GridRenderer;
   readonly keyboardEventTarget?: GlobalEventHandlers;
   readonly onActiveCellChanged?: (selectable: MakeTableSelectable<CellElement>) => unknown;
   readonly onSelectionChanged?: (selectable: MakeTableSelectable<CellElement>) => unknown;
@@ -64,10 +63,11 @@ export type MakeTableSelectableOptions<CellElement> = {
 
 export class MakeTableSelectable<CellElement> {
   readonly keyboardShortcuts = keyboardShortcuts();
+  readonly #destroyController = new AbortController();
   #selection: GridSelection | undefined;
 
   constructor(readonly options: MakeTableSelectableOptions<CellElement>) {
-    const signal = options.signal;
+    const signal = this.#destroyController.signal;
     const context = options.context;
     const setSelection = (selection: GridSelection) => this.#setSelection(selection);
     this.render();
@@ -102,8 +102,13 @@ export class MakeTableSelectable<CellElement> {
     return this.#selection?.extendMode;
   }
 
+  destroy() {
+    this.#destroyController.abort();
+    this.options.renderer.destroy();
+  }
+
   render(): void {
-    this.options.render(this.#selection);
+    this.options.renderer.render(this.options.context, this.#selection);
   }
 
   keydown(e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey">) {

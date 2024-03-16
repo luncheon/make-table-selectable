@@ -34,3 +34,8 @@ export type GridContext<CellElement = unknown> = {
   readonly getAreaRect: (area: GridArea) => GridRect;
   readonly isNonblankCell: (r: number, c: number) => boolean;
 };
+
+export type GridRenderer = {
+  readonly destroy: () => void;
+  readonly render: (context: GridContext, selection: GridSelection | undefined) => void;
+};

@@ -1,4 +1,4 @@
-import type { GridContext, GridSelection } from "./MakeTableSelectable/types.js";
+import type { GridContext, GridRenderer, GridSelection } from "./MakeTableSelectable/types.js";
 
 const overlayStyleBase: Partial<CSSStyleDeclaration> = {
   boxSizing: "border-box",
@@ -19,10 +19,15 @@ const h = <K extends keyof HTMLElementTagNameMap>(tagName: K, style: Partial<CSS
   return overlay;
 };
 
-export const renderer = (signal: AbortSignal, context: GridContext) => {
-  const overlayContainer = context.rootElement.parentElement!.appendChild(document.createElement("div"));
-  signal.addEventListener("abort", () => overlayContainer.remove(), { once: true });
-  return (selection: GridSelection | undefined) => {
+export class DefaultRenderer implements GridRenderer {
+  #overlayContainer: HTMLElement | undefined;
+
+  destroy() {
+    this.#overlayContainer?.remove();
+  }
+
+  render(context: GridContext, selection: GridSelection | undefined) {
+    const overlayContainer = (this.#overlayContainer ??= context.rootElement.parentElement!.appendChild(document.createElement("div")));
     if (!selection) {
       overlayContainer.innerHTML = "";
       return;
@@ -50,5 +55,5 @@ export const renderer = (signal: AbortSignal, context: GridContext) => {
       }
       overlay = overlay.nextElementSibling as HTMLElement | null;
     }
-  };
-};
+  }
+}

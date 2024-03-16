@@ -33,6 +33,10 @@ type GridContext<CellElement = unknown> = {
 	readonly getAreaRect: (area: GridArea) => GridRect;
 	readonly isNonblankCell: (r: number, c: number) => boolean;
 };
+type GridRenderer = {
+	readonly destroy: () => void;
+	readonly render: (context: GridContext, selection: GridSelection | undefined) => void;
+};
 declare class SelectedRow<CellElement> {
 	#private;
 	constructor(context: GridContext<CellElement>, r: number, c: number, cs: number);
@@ -45,9 +49,8 @@ declare class SelectedArea<CellElement> {
 	get rows(): readonly SelectedRow<CellElement>[];
 }
 type MakeTableSelectableOptions<CellElement> = {
-	readonly signal: AbortSignal;
 	readonly context: GridContext<CellElement>;
-	readonly render: (selection: GridSelection | undefined) => void;
+	readonly renderer: GridRenderer;
 	readonly keyboardEventTarget?: GlobalEventHandlers;
 	readonly onActiveCellChanged?: (selectable: MakeTableSelectable<CellElement>) => unknown;
 	readonly onSelectionChanged?: (selectable: MakeTableSelectable<CellElement>) => unknown;
@@ -63,12 +66,11 @@ declare class MakeTableSelectable<CellElement> {
 	get selectedAreas(): readonly SelectedArea<CellElement>[];
 	get endMode(): boolean | undefined;
 	get expandMode(): boolean | undefined;
+	destroy(): void;
 	render(): void;
 	keydown(e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey">): boolean;
 }
-export declare const makeTableSelectable: (options: Omit<MakeTableSelectableOptions<HTMLTableCellElement>, "render" | "signal"> & {
-	readonly signal?: AbortSignal;
-}) => MakeTableSelectable<HTMLTableCellElement>;
+export declare const makeTableSelectable: (options: MakeTableSelectableOptions<HTMLTableCellElement>) => MakeTableSelectable<HTMLTableCellElement>;
 export declare class MergeableTableGridContext implements GridContext<HTMLTableCellElement> {
 	#private;
 	readonly rootElement: HTMLTableElement | HTMLTableSectionElement;
@@ -89,6 +91,11 @@ export declare class MergeableTableGridContext implements GridContext<HTMLTableC
 		readonly clientX: number;
 		readonly clientY: number;
 	}): GridArea | undefined;
+}
+export declare class DefaultRenderer implements GridRenderer {
+	#private;
+	destroy(): void;
+	render(context: GridContext, selection: GridSelection | undefined): void;
 }
 
 export {};
