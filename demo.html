@@ -63,7 +63,10 @@
 
       const selectable = makeTableSelectable({
         context: new MergeableTableGridContext(tbody),
-        renderer: new DefaultRenderer(),
+        renderer: new DefaultRenderer({
+          inactiveArea: { fill: "#1112" },
+          activeArea: { fill: "#1112", stroke: "#284" },
+        }),
         keyboardEventTarget: window,
         onModeChanged: () => {
           modeElement.textContent = [

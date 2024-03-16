@@ -92,8 +92,25 @@ export declare class MergeableTableGridContext implements GridContext<HTMLTableC
 		readonly clientY: number;
 	}): GridArea | undefined;
 }
+type FillStrokeStyle = {
+	readonly fill?: string;
+	readonly "fill-opacity"?: string;
+	readonly stroke?: string;
+	readonly "stroke-opacity"?: string;
+	readonly "stroke-width"?: string | number;
+	readonly "stroke-linejoin"?: string;
+	readonly "stroke-dasharray"?: string;
+	readonly "stroke-dashoffset"?: string;
+};
+type DefaultRendererTheme = {
+	readonly inactiveArea: FillStrokeStyle;
+	readonly activeArea: FillStrokeStyle;
+	readonly activeCell?: FillStrokeStyle;
+};
 export declare class DefaultRenderer implements GridRenderer {
 	#private;
+	readonly theme: DefaultRendererTheme;
+	constructor(theme: DefaultRendererTheme);
 	destroy(): void;
 	render(context: GridContext, selection: GridSelection | undefined): void;
 }

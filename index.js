@@ -719,54 +719,51 @@ var MergeableTableGridContext = class {
 };
 
 // src/DefaultRenderer.ts
-var overlayStyleBase = {
-  boxSizing: "border-box",
-  pointerEvents: "none",
-  position: "absolute",
-  border: "0 solid rgba(0, 128, 255, 0.2)",
-  outline: "auto 2px rgb(0, 128, 255)",
-  outlineOffset: "-1px",
-  background: "rgba(128, 224, 255, 0.2)"
-  // transitionProperty: "left,top,width,height,border-width",
-  // transitionDuration: "64ms",
-  // transitionTimingFunction: "linear",
+var createSvgElement = (qualifiedName, attributes, styles, children) => {
+  const element = document.createElementNS("http://www.w3.org/2000/svg", qualifiedName);
+  if (attributes) {
+    for (const [name, value] of Object.entries(attributes)) {
+      element.setAttribute(name, value);
+    }
+  }
+  Object.assign(element.style, styles);
+  children && element.append(...children);
+  return element;
 };
-var h = (tagName, style) => {
-  const overlay = document.createElement(tagName);
-  Object.assign(overlay.style, style);
-  return overlay;
-};
+var createRootElement = ({
+  inactiveArea,
+  activeCell,
+  activeArea: { fill: activeAreaFill, "fill-opacity": activeAreaFillOpacity, ...activeAreaStroke }
+}) => createSvgElement("svg", { width: "100%", height: "100%", fill: "none" }, { position: "absolute", inset: "0", pointerEvents: "none" }, [
+  createSvgElement("path", inactiveArea),
+  createSvgElement("path", { fill: activeAreaFill, "fill-opacity": activeAreaFillOpacity, "fill-rule": "evenodd" }),
+  createSvgElement("path", { "stroke-width": 2, ...activeAreaStroke }),
+  createSvgElement("path", activeCell)
+]);
+var rectPath = (rect) => `M${rect.x} ${rect.y}h${rect.w}v${rect.h}h${-rect.w}Z`;
 var DefaultRenderer = class {
+  constructor(theme) {
+    this.theme = theme;
+  }
   #overlayContainer;
   destroy() {
     this.#overlayContainer?.remove();
   }
   render(context, selection) {
-    const overlayContainer = this.#overlayContainer ??= context.rootElement.parentElement.appendChild(document.createElement("div"));
-    if (!selection) {
-      overlayContainer.innerHTML = "";
-      return;
-    }
-    const areas = selection.areas;
-    while (overlayContainer.children.length > areas.length) {
-      overlayContainer.lastElementChild.remove();
-    }
-    let overlay = overlayContainer.firstElementChild;
-    for (let i = 0; i < areas.length; i++) {
-      const rect = context.getAreaRect(areas[i]);
-      const overlayStyle = (overlay ??= overlayContainer.appendChild(h("div", overlayStyleBase))).style;
-      overlayStyle.left = `${rect.x}px`;
-      overlayStyle.top = `${rect.y}px`;
-      overlayStyle.width = `${rect.w}px`;
-      overlayStyle.height = `${rect.h}px`;
-      if (i === 0) {
-        const activeCell = selection.activeCell;
-        const activeRect = context.getAreaRect(context.getCellArea(activeCell.r, activeCell.c));
-        overlayStyle.borderWidth = `${activeRect.y - rect.y}px ${rect.x + rect.w - activeRect.x - activeRect.w}px ${rect.y + rect.h - activeRect.y - activeRect.h}px ${activeRect.x - rect.x}px`;
-      } else {
-        overlayStyle.borderWidth = `${rect.h / 2}px ${rect.w / 2}px`;
-      }
-      overlay = overlay.nextElementSibling;
+    const [inactiveAreaPathElement, activeAreaFillPathElement, activeAreaStrokePathElement, activeCellPathElement] = (this.#overlayContainer ??= context.rootElement.parentElement.appendChild(createRootElement(this.theme))).children;
+    if (selection) {
+      const areaPaths = selection.areas.map((area) => rectPath(context.getAreaRect(area)));
+      const activeCell = selection.activeCell;
+      const activeCellPath = rectPath(context.getAreaRect(context.getCellArea(activeCell.r, activeCell.c)));
+      inactiveAreaPathElement.setAttribute("d", areaPaths.slice(1).join(""));
+      activeAreaFillPathElement.setAttribute("d", `${areaPaths[0]} ${activeCellPath}`);
+      activeAreaStrokePathElement.setAttribute("d", areaPaths[0]);
+      activeCellPathElement.setAttribute("d", activeCellPath);
+    } else {
+      inactiveAreaPathElement.removeAttribute("d");
+      activeAreaFillPathElement.removeAttribute("d");
+      activeAreaStrokePathElement.removeAttribute("d");
+      activeCellPathElement.removeAttribute("d");
     }
   }
 };
