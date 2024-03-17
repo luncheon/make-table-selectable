@@ -22,6 +22,7 @@ export type GridSelection = {
   readonly activeCell: GridCell;
   readonly endMode?: boolean;
   readonly extendMode?: boolean;
+  readonly touchMode?: boolean;
 };
 
 export type GridContext<CellElement = unknown> = {
@@ -35,7 +36,7 @@ export type GridContext<CellElement = unknown> = {
   readonly isNonblankCell: (r: number, c: number) => boolean;
 };
 
-export type GridRenderer = {
+export type GridSelectionRenderer = {
   readonly destroy: () => void;
   readonly render: (context: GridContext, selection: GridSelection | undefined) => void;
 };

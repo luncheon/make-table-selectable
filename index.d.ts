@@ -19,6 +19,7 @@ type GridSelection = {
 	readonly activeCell: GridCell;
 	readonly endMode?: boolean;
 	readonly extendMode?: boolean;
+	readonly touchMode?: boolean;
 };
 type GridContext<CellElement = unknown> = {
 	readonly rootElement: GlobalEventHandlers & Element;
@@ -33,7 +34,7 @@ type GridContext<CellElement = unknown> = {
 	readonly getAreaRect: (area: GridArea) => GridRect;
 	readonly isNonblankCell: (r: number, c: number) => boolean;
 };
-type GridRenderer = {
+type GridSelectionRenderer = {
 	readonly destroy: () => void;
 	readonly render: (context: GridContext, selection: GridSelection | undefined) => void;
 };
@@ -50,7 +51,7 @@ declare class SelectedArea<CellElement> {
 }
 type MakeTableSelectableOptions<CellElement> = {
 	readonly context: GridContext<CellElement>;
-	readonly renderer: GridRenderer;
+	readonly renderer: GridSelectionRenderer;
 	readonly keyboardEventTarget?: GlobalEventHandlers;
 	readonly onActiveCellChanged?: (selectable: MakeTableSelectable<CellElement>) => unknown;
 	readonly onSelectionChanged?: (selectable: MakeTableSelectable<CellElement>) => unknown;
@@ -66,11 +67,39 @@ declare class MakeTableSelectable<CellElement> {
 	get selectedAreas(): readonly SelectedArea<CellElement>[];
 	get endMode(): boolean | undefined;
 	get expandMode(): boolean | undefined;
+	get touchMode(): boolean | undefined;
 	destroy(): void;
 	render(): void;
 	keydown(e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey">): boolean;
 }
-export declare const makeTableSelectable: (options: MakeTableSelectableOptions<HTMLTableCellElement>) => MakeTableSelectable<HTMLTableCellElement>;
+type FillStrokeStyle = {
+	readonly fill?: string;
+	readonly "fill-opacity"?: string;
+	readonly stroke?: string;
+	readonly "stroke-opacity"?: string;
+	readonly "stroke-width"?: string | number;
+	readonly "stroke-linejoin"?: string;
+	readonly "stroke-dasharray"?: string;
+	readonly "stroke-dashoffset"?: string;
+};
+type SelectionRendererAppearance = {
+	readonly inactiveArea: FillStrokeStyle;
+	readonly activeArea: FillStrokeStyle;
+	readonly activeCell?: FillStrokeStyle;
+	readonly touchHandle: FillStrokeStyle & {
+		readonly r?: string | number;
+	};
+};
+declare class SelectionRenderer implements GridSelectionRenderer {
+	#private;
+	readonly appearance: SelectionRendererAppearance;
+	constructor(appearance: SelectionRendererAppearance);
+	destroy(): void;
+	render(context: GridContext, selection: GridSelection | undefined): void;
+}
+export declare const makeTableSelectable: (options: Omit<MakeTableSelectableOptions<HTMLTableCellElement>, "renderer"> & {
+	readonly appearance: SelectionRendererAppearance;
+}) => MakeTableSelectable<HTMLTableCellElement>;
 export declare class MergeableTableGridContext implements GridContext<HTMLTableCellElement> {
 	#private;
 	readonly rootElement: HTMLTableElement | HTMLTableSectionElement;
@@ -92,27 +121,9 @@ export declare class MergeableTableGridContext implements GridContext<HTMLTableC
 		readonly clientY: number;
 	}): GridArea | undefined;
 }
-type FillStrokeStyle = {
-	readonly fill?: string;
-	readonly "fill-opacity"?: string;
-	readonly stroke?: string;
-	readonly "stroke-opacity"?: string;
-	readonly "stroke-width"?: string | number;
-	readonly "stroke-linejoin"?: string;
-	readonly "stroke-dasharray"?: string;
-	readonly "stroke-dashoffset"?: string;
+
+export {
+	SelectionRenderer as DefaultRenderer,
 };
-type DefaultRendererTheme = {
-	readonly inactiveArea: FillStrokeStyle;
-	readonly activeArea: FillStrokeStyle;
-	readonly activeCell?: FillStrokeStyle;
-};
-export declare class DefaultRenderer implements GridRenderer {
-	#private;
-	readonly theme: DefaultRendererTheme;
-	constructor(theme: DefaultRendererTheme);
-	destroy(): void;
-	render(context: GridContext, selection: GridSelection | undefined): void;
-}
 
 export {};

@@ -95,30 +95,30 @@ var touchHandleContainerStyles = {
   inset: "0",
   width: "100%",
   height: "100%",
-  pointerEvents: "none",
-  touchAction: "none"
+  touchAction: "none",
+  fill: "transparent",
+  pointerEvents: "fill"
 };
 var handleTouchEvents = (signal, context, setSelection) => {
   let selection;
   const touchHandleContainer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   Object.assign(touchHandleContainer.style, touchHandleContainerStyles);
-  touchHandleContainer.innerHTML = '<g stroke-width=1.5 stroke="rgb(0,128,255)" fill=white><circle r=6 /><circle r=6 /></g><g fill=transparent pointer-events=fill><circle r=12 /><circle r=12 /></g>';
-  const [g1, g2] = touchHandleContainer.children;
-  const [tlHandle, brHandle] = g1.children;
-  const [tlMargin, brMargin] = g2.children;
+  touchHandleContainer.innerHTML = "<circle r=12 /><circle r=12 />";
+  const [tlHandle, brHandle] = touchHandleContainer.children;
   const hideTouchHandle = () => touchHandleContainer.remove();
   const _setSelection = (area, activeCell) => {
-    setSelection(selection = { areas: [area], activeCell: activeCell ?? rc(area.r0, area.c0) });
+    setSelection(selection = { areas: [area], activeCell: activeCell ?? rc(area.r0, area.c0), touchMode: true });
     const rect = context.getAreaRect(area);
-    tlHandle.cx.baseVal.value = tlMargin.cx.baseVal.value = rect.x;
-    tlHandle.cy.baseVal.value = tlMargin.cy.baseVal.value = rect.y;
-    brHandle.cx.baseVal.value = brMargin.cx.baseVal.value = rect.x + rect.w;
-    brHandle.cy.baseVal.value = brMargin.cy.baseVal.value = rect.y + rect.h;
+    tlHandle.cx.baseVal.value = rect.x;
+    tlHandle.cy.baseVal.value = rect.y;
+    brHandle.cx.baseVal.value = rect.x + rect.w;
+    brHandle.cy.baseVal.value = rect.y + rect.h;
   };
   signal.addEventListener("abort", hideTouchHandle, { once: true });
   addEventListener("keydown", ({ key }) => key !== "Control" && key !== "Meta" && key !== "Alt" && key !== "Shift" && hideTouchHandle(), {
     signal
   });
+  context.rootElement.addEventListener("pointerdown", (e) => isTouchEvent(e) || hideTouchHandle(), { signal });
   context.rootElement.addEventListener(
     "pointerup",
     (e) => {
@@ -128,13 +128,11 @@ var handleTouchEvents = (signal, context, setSelection) => {
           _setSelection(area);
           e.currentTarget.parentElement.append(touchHandleContainer);
         }
-      } else {
-        hideTouchHandle();
       }
     },
     { signal }
   );
-  g2.addEventListener("pointerdown", (e) => {
+  touchHandleContainer.addEventListener("pointerdown", (e) => {
     if (selection && isTouchEvent(e)) {
       const activeCellArea = context.getCellArea(selection.activeCell.r, selection.activeCell.c);
       let previousPointedCellArea;
@@ -595,6 +593,9 @@ var MakeTableSelectable = class {
   get expandMode() {
     return this.#selection?.extendMode;
   }
+  get touchMode() {
+    return this.#selection?.touchMode;
+  }
   destroy() {
     this.#destroyController.abort();
     this.options.renderer.destroy();
@@ -618,22 +619,108 @@ var MakeTableSelectable = class {
     const activeCellChanged = oldActiveCell?.r !== newActiveCell?.r || oldActiveCell?.c !== newActiveCell?.c;
     const oldAreas = oldSelection?.areas;
     const newAreas = newSelection?.areas;
-    const selectionChanged = oldAreas?.length !== newAreas?.length || oldAreas?.some((oldArea, i) => !areasEqual(oldArea, newAreas[i]));
+    const selectedAreasChanged = oldAreas?.length !== newAreas?.length || oldAreas?.some((oldArea, i) => !areasEqual(oldArea, newAreas[i]));
+    const touchModeChanged = oldSelection?.touchMode !== newSelection?.touchMode;
     this.#selection = newSelection;
-    if (activeCellChanged || selectionChanged) {
-      this.#selectedAreasCache = void 0;
+    if (activeCellChanged || selectedAreasChanged || touchModeChanged) {
       this.render();
-      activeCellChanged && this.options.onActiveCellChanged?.(this);
-      selectionChanged && this.options.onSelectionChanged?.(this);
     }
-    if (oldSelection?.extendMode !== newSelection?.extendMode || oldSelection?.endMode !== newSelection?.endMode) {
+    if (selectedAreasChanged) {
+      this.#selectedAreasCache = void 0;
+      this.options.onSelectionChanged?.(this);
+    }
+    if (activeCellChanged) {
+      this.options.onActiveCellChanged?.(this);
+    }
+    if (oldSelection?.extendMode !== newSelection?.extendMode || oldSelection?.endMode !== newSelection?.endMode || touchModeChanged) {
       this.options.onModeChanged?.(this);
+    }
+  }
+};
+
+// src/SelectionRenderer.ts
+var createSvgElement = (qualifiedName, attributes, styles, children) => {
+  const element = document.createElementNS("http://www.w3.org/2000/svg", qualifiedName);
+  if (attributes) {
+    for (const [name, value] of Object.entries(attributes)) {
+      element.setAttribute(name, value);
+    }
+  }
+  Object.assign(element.style, styles);
+  children && element.append(...children);
+  return element;
+};
+var createRootElement = ({
+  inactiveArea,
+  activeCell,
+  touchHandle,
+  activeArea: { fill: activeAreaFill, "fill-opacity": activeAreaFillOpacity, ...activeAreaStroke }
+}) => {
+  const touchHandleStyle = { r: 6, "stroke-width": 1.5, ...touchHandle };
+  return createSvgElement(
+    "svg",
+    { width: "100%", height: "100%", fill: "none" },
+    { position: "absolute", inset: "0", pointerEvents: "none" },
+    [
+      createSvgElement("path", inactiveArea),
+      createSvgElement("path", { fill: activeAreaFill, "fill-opacity": activeAreaFillOpacity, "fill-rule": "evenodd" }),
+      createSvgElement("path", { "stroke-width": 2, ...activeAreaStroke }),
+      createSvgElement("path", activeCell),
+      createSvgElement("circle", touchHandleStyle),
+      createSvgElement("circle", touchHandleStyle)
+    ]
+  );
+};
+var rectPath = (rect) => `M${rect.x} ${rect.y}h${rect.w}v${rect.h}h${-rect.w}Z`;
+var SelectionRenderer = class {
+  constructor(appearance) {
+    this.appearance = appearance;
+  }
+  #overlayContainer;
+  destroy() {
+    this.#overlayContainer?.remove();
+  }
+  render(context, selection) {
+    const [
+      inactiveAreaPathElement,
+      activeAreaFillPathElement,
+      activeAreaStrokePathElement,
+      activeCellPathElement,
+      tlTouchHandle,
+      brTouchHandle
+    ] = (this.#overlayContainer ??= context.rootElement.parentElement.appendChild(createRootElement(this.appearance))).children;
+    if (selection) {
+      const inactiveAreasPath = selection.areas.slice(1).map((area) => rectPath(context.getAreaRect(area)));
+      const activeAreaRect = context.getAreaRect(selection.areas[0]);
+      const activeAreaPath = rectPath(activeAreaRect);
+      const activeCell = selection.activeCell;
+      const activeCellPath = rectPath(context.getAreaRect(context.getCellArea(activeCell.r, activeCell.c)));
+      inactiveAreaPathElement.setAttribute("d", inactiveAreasPath.slice(1).join(""));
+      activeAreaFillPathElement.setAttribute("d", `${activeAreaPath} ${activeCellPath}`);
+      activeAreaStrokePathElement.setAttribute("d", activeAreaPath);
+      activeCellPathElement.setAttribute("d", activeCellPath);
+      if (selection.touchMode) {
+        tlTouchHandle.setAttribute("cx", activeAreaRect.x);
+        tlTouchHandle.setAttribute("cy", activeAreaRect.y);
+        brTouchHandle.setAttribute("cx", activeAreaRect.x + activeAreaRect.w);
+        brTouchHandle.setAttribute("cy", activeAreaRect.y + activeAreaRect.h);
+      }
+    } else {
+      inactiveAreaPathElement.removeAttribute("d");
+      activeAreaFillPathElement.removeAttribute("d");
+      activeAreaStrokePathElement.removeAttribute("d");
+      activeCellPathElement.removeAttribute("d");
+    }
+    if (!selection?.touchMode) {
+      tlTouchHandle.removeAttribute("cx");
+      brTouchHandle.removeAttribute("cx");
     }
   }
 };
 
 // src/makeTableSelectable.ts
 var makeTableSelectable = (options) => new MakeTableSelectable({
+  renderer: new SelectionRenderer(options.appearance),
   onActiveCellChanged: (selectable) => {
     selectable.activeCellElement?.scrollIntoView({ block: "nearest" });
     options.onActiveCellChanged?.(selectable);
@@ -717,58 +804,8 @@ var MergeableTableGridContext = class {
     return td && this.#cellAreaMap.get(td);
   }
 };
-
-// src/DefaultRenderer.ts
-var createSvgElement = (qualifiedName, attributes, styles, children) => {
-  const element = document.createElementNS("http://www.w3.org/2000/svg", qualifiedName);
-  if (attributes) {
-    for (const [name, value] of Object.entries(attributes)) {
-      element.setAttribute(name, value);
-    }
-  }
-  Object.assign(element.style, styles);
-  children && element.append(...children);
-  return element;
-};
-var createRootElement = ({
-  inactiveArea,
-  activeCell,
-  activeArea: { fill: activeAreaFill, "fill-opacity": activeAreaFillOpacity, ...activeAreaStroke }
-}) => createSvgElement("svg", { width: "100%", height: "100%", fill: "none" }, { position: "absolute", inset: "0", pointerEvents: "none" }, [
-  createSvgElement("path", inactiveArea),
-  createSvgElement("path", { fill: activeAreaFill, "fill-opacity": activeAreaFillOpacity, "fill-rule": "evenodd" }),
-  createSvgElement("path", { "stroke-width": 2, ...activeAreaStroke }),
-  createSvgElement("path", activeCell)
-]);
-var rectPath = (rect) => `M${rect.x} ${rect.y}h${rect.w}v${rect.h}h${-rect.w}Z`;
-var DefaultRenderer = class {
-  constructor(theme) {
-    this.theme = theme;
-  }
-  #overlayContainer;
-  destroy() {
-    this.#overlayContainer?.remove();
-  }
-  render(context, selection) {
-    const [inactiveAreaPathElement, activeAreaFillPathElement, activeAreaStrokePathElement, activeCellPathElement] = (this.#overlayContainer ??= context.rootElement.parentElement.appendChild(createRootElement(this.theme))).children;
-    if (selection) {
-      const areaPaths = selection.areas.map((area) => rectPath(context.getAreaRect(area)));
-      const activeCell = selection.activeCell;
-      const activeCellPath = rectPath(context.getAreaRect(context.getCellArea(activeCell.r, activeCell.c)));
-      inactiveAreaPathElement.setAttribute("d", areaPaths.slice(1).join(""));
-      activeAreaFillPathElement.setAttribute("d", `${areaPaths[0]} ${activeCellPath}`);
-      activeAreaStrokePathElement.setAttribute("d", areaPaths[0]);
-      activeCellPathElement.setAttribute("d", activeCellPath);
-    } else {
-      inactiveAreaPathElement.removeAttribute("d");
-      activeAreaFillPathElement.removeAttribute("d");
-      activeAreaStrokePathElement.removeAttribute("d");
-      activeCellPathElement.removeAttribute("d");
-    }
-  }
-};
 export {
-  DefaultRenderer,
+  SelectionRenderer as DefaultRenderer,
   MergeableTableGridContext,
   makeTableSelectable
 };

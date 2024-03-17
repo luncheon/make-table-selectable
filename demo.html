@@ -20,7 +20,6 @@
   <body>
     <script type="module">
       import {
-        DefaultRenderer,
         MergeableTableGridContext,
         makeTableSelectable,
       } from "./index.js";
@@ -63,10 +62,11 @@
 
       const selectable = makeTableSelectable({
         context: new MergeableTableGridContext(tbody),
-        renderer: new DefaultRenderer({
+        appearance: {
           inactiveArea: { fill: "#1112" },
           activeArea: { fill: "#1112", stroke: "#284" },
-        }),
+          touchHandle: { fill: "white", stroke: "#284" },
+        },
         keyboardEventTarget: window,
         onModeChanged: () => {
           modeElement.textContent = [

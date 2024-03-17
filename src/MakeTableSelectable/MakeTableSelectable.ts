@@ -1,7 +1,7 @@
 import { handlePointerEvents } from "./handlePointerEvents.js";
 import { handleTouchEvents } from "./handleTouchEvents.js";
 import { keyboardShortcuts } from "./keyboardShortcuts.js";
-import type { GridArea, GridContext, GridRenderer, GridSelection } from "./types.js";
+import type { GridArea, GridContext, GridSelection, GridSelectionRenderer } from "./types.js";
 import { areasEqual } from "./util.js";
 
 export class SelectedRow<CellElement> {
@@ -54,7 +54,7 @@ export class SelectedArea<CellElement> {
 
 export type MakeTableSelectableOptions<CellElement> = {
   readonly context: GridContext<CellElement>;
-  readonly renderer: GridRenderer;
+  readonly renderer: GridSelectionRenderer;
   readonly keyboardEventTarget?: GlobalEventHandlers;
   readonly onActiveCellChanged?: (selectable: MakeTableSelectable<CellElement>) => unknown;
   readonly onSelectionChanged?: (selectable: MakeTableSelectable<CellElement>) => unknown;
@@ -101,6 +101,9 @@ export class MakeTableSelectable<CellElement> {
   get expandMode() {
     return this.#selection?.extendMode;
   }
+  get touchMode() {
+    return this.#selection?.touchMode;
+  }
 
   destroy() {
     this.#destroyController.abort();
@@ -132,16 +135,23 @@ export class MakeTableSelectable<CellElement> {
 
     const oldAreas = oldSelection?.areas;
     const newAreas = newSelection?.areas;
-    const selectionChanged = oldAreas?.length !== newAreas?.length || oldAreas?.some((oldArea, i) => !areasEqual(oldArea, newAreas![i]!));
+    const selectedAreasChanged =
+      oldAreas?.length !== newAreas?.length || oldAreas?.some((oldArea, i) => !areasEqual(oldArea, newAreas![i]!));
+
+    const touchModeChanged = oldSelection?.touchMode !== newSelection?.touchMode;
 
     this.#selection = newSelection;
-    if (activeCellChanged || selectionChanged) {
-      this.#selectedAreasCache = undefined;
+    if (activeCellChanged || selectedAreasChanged || touchModeChanged) {
       this.render();
-      activeCellChanged && this.options.onActiveCellChanged?.(this);
-      selectionChanged && this.options.onSelectionChanged?.(this);
     }
-    if (oldSelection?.extendMode !== newSelection?.extendMode || oldSelection?.endMode !== newSelection?.endMode) {
+    if (selectedAreasChanged) {
+      this.#selectedAreasCache = undefined;
+      this.options.onSelectionChanged?.(this);
+    }
+    if (activeCellChanged) {
+      this.options.onActiveCellChanged?.(this);
+    }
+    if (oldSelection?.extendMode !== newSelection?.extendMode || oldSelection?.endMode !== newSelection?.endMode || touchModeChanged) {
       this.options.onModeChanged?.(this);
     }
   }
