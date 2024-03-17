@@ -62,8 +62,6 @@ const createRootElement = ({
   );
 };
 
-const rectPath = (rect: GridRect) => `M${rect.x} ${rect.y}h${rect.w}v${rect.h}h${-rect.w}Z`;
-
 const setRectElementRect = (rectElement: SVGRectElement, rect: GridRect) => {
   rectElement.x.baseVal.value = rect.x;
   rectElement.y.baseVal.value = rect.y;
@@ -93,37 +91,35 @@ export class SelectionRenderer implements GridSelectionRenderer {
   render(context: GridContext, selection: GridSelection | undefined) {
     const overlayContainer = this.#container;
     overlayContainer.parentElement !== context.rootElement.parentElement && context.rootElement.parentElement!.append(overlayContainer);
+    overlayContainer.style.display = selection ? "" : "none";
     if (selection) {
-      const [inactiveAreaGElement, activeAreaFillPathElement, activeAreaStrokeRectElement, activeCellRectElement] = this.#elements;
-      const areas = selection.areas;
+      const { areas, activeCell } = selection;
       const activeAreaRect = context.getAreaRect(areas[0]!);
-      const activeCell = selection.activeCell;
       const activeCellRect = context.getAreaRect(context.getCellArea(activeCell.r, activeCell.c));
-      overlayContainer.style.display = "";
       while (this.#liveInactiveAreaRects.length >= areas.length) {
-        inactiveAreaGElement.lastElementChild!.remove();
+        this.#elements[0].lastElementChild!.remove();
       }
       for (let i = 1; i < areas.length; i++) {
         setRectElementRect(
-          this.#liveInactiveAreaRects[i - 1] ?? inactiveAreaGElement.appendChild(createSvgElement("rect")),
+          this.#liveInactiveAreaRects[i - 1] ?? this.#elements[0].appendChild(createSvgElement("rect")),
           context.getAreaRect(areas[i]!),
         );
       }
-      activeAreaFillPathElement.setAttribute("d", `${rectPath(activeAreaRect)} ${rectPath(activeCellRect)}`);
-      setRectElementRect(activeAreaStrokeRectElement, activeAreaRect);
-      setRectElementRect(activeCellRectElement, activeCellRect);
+      this.#elements[1].setAttribute(
+        "d",
+        `M${activeAreaRect.x} ${activeAreaRect.y}h${activeAreaRect.w}v${activeAreaRect.h}h${-activeAreaRect.w}Z M${activeCellRect.x} ${
+          activeCellRect.y
+        }h${activeCellRect.w}v${activeCellRect.h}h${-activeCellRect.w}Z`,
+      );
+      setRectElementRect(this.#elements[2], activeAreaRect);
+      setRectElementRect(this.#elements[3], activeCellRect);
+      this.touchHandle.style.display = selection.touchMode ? "" : "none";
       if (selection.touchMode) {
-        const [tlTouchHandleElement, brTouchHandleElement, tlTouchHandleMargin, brTouchHandleMargin] = this.#touchHandles;
-        this.touchHandle.style.display = "";
-        tlTouchHandleElement.cx.baseVal.value = tlTouchHandleMargin.cx.baseVal.value = activeAreaRect.x;
-        tlTouchHandleElement.cy.baseVal.value = tlTouchHandleMargin.cy.baseVal.value = activeAreaRect.y;
-        brTouchHandleElement.cx.baseVal.value = brTouchHandleMargin.cx.baseVal.value = activeAreaRect.x + activeAreaRect.w;
-        brTouchHandleElement.cy.baseVal.value = brTouchHandleMargin.cy.baseVal.value = activeAreaRect.y + activeAreaRect.h;
-      } else {
-        this.touchHandle.style.display = "none";
+        this.#touchHandles[0].cx.baseVal.value = this.#touchHandles[2].cx.baseVal.value = activeAreaRect.x;
+        this.#touchHandles[0].cy.baseVal.value = this.#touchHandles[2].cy.baseVal.value = activeAreaRect.y;
+        this.#touchHandles[1].cx.baseVal.value = this.#touchHandles[3].cx.baseVal.value = activeAreaRect.x + activeAreaRect.w;
+        this.#touchHandles[1].cy.baseVal.value = this.#touchHandles[3].cy.baseVal.value = activeAreaRect.y + activeAreaRect.h;
       }
-    } else {
-      overlayContainer.style.display = "none";
     }
   }
 }

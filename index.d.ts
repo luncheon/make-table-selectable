@@ -91,14 +91,6 @@ type SelectionRendererAppearance = {
 		readonly r?: number;
 	};
 };
-declare class SelectionRenderer implements GridSelectionRenderer {
-	#private;
-	readonly appearance: SelectionRendererAppearance;
-	readonly touchHandle: SVGGElement;
-	constructor(appearance: SelectionRendererAppearance);
-	destroy(): void;
-	render(context: GridContext, selection: GridSelection | undefined): void;
-}
 export declare const makeTableSelectable: (options: Omit<MakeTableSelectableOptions<HTMLTableCellElement>, "renderer"> & {
 	readonly appearance: SelectionRendererAppearance;
 }) => MakeTableSelectable<HTMLTableCellElement>;
@@ -123,9 +115,5 @@ export declare class MergeableTableGridContext implements GridContext<HTMLTableC
 		readonly clientY: number;
 	}): GridArea | undefined;
 }
-
-export {
-	SelectionRenderer as DefaultRenderer,
-};
 
 export {};
