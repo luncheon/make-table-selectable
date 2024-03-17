@@ -90,63 +90,36 @@ var handlePointerEvents = (signal, context, getSelection, setSelection) => (
 );
 
 // src/MakeTableSelectable/handleTouchEvents.ts
-var touchHandleContainerStyles = {
-  position: "absolute",
-  inset: "0",
-  width: "100%",
-  height: "100%",
-  touchAction: "none",
-  fill: "transparent",
-  pointerEvents: "fill"
-};
-var handleTouchEvents = (signal, context, setSelection) => {
+var handleTouchEvents = (signal, context, touchHandle, setSelection) => {
   let selection;
-  const touchHandleContainer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  Object.assign(touchHandleContainer.style, touchHandleContainerStyles);
-  touchHandleContainer.innerHTML = "<circle r=12 /><circle r=12 />";
-  const [tlHandle, brHandle] = touchHandleContainer.children;
-  const hideTouchHandle = () => touchHandleContainer.remove();
-  const _setSelection = (area, activeCell) => {
-    setSelection(selection = { areas: [area], activeCell: activeCell ?? rc(area.r0, area.c0), touchMode: true });
-    const rect = context.getAreaRect(area);
-    tlHandle.cx.baseVal.value = rect.x;
-    tlHandle.cy.baseVal.value = rect.y;
-    brHandle.cx.baseVal.value = rect.x + rect.w;
-    brHandle.cy.baseVal.value = rect.y + rect.h;
-  };
-  signal.addEventListener("abort", hideTouchHandle, { once: true });
-  addEventListener("keydown", ({ key }) => key !== "Control" && key !== "Meta" && key !== "Alt" && key !== "Shift" && hideTouchHandle(), {
-    signal
-  });
-  context.rootElement.addEventListener("pointerdown", (e) => isTouchEvent(e) || hideTouchHandle(), { signal });
+  const setSelectedArea = (area, activeCell) => setSelection(selection = { areas: [area], activeCell: activeCell ?? rc(area.r0, area.c0), touchMode: true });
   context.rootElement.addEventListener(
     "pointerup",
     (e) => {
       if (isTouchEvent(e)) {
         const area = context.getCellAreaFromPoint(e);
-        if (area) {
-          _setSelection(area);
-          e.currentTarget.parentElement.append(touchHandleContainer);
-        }
+        area && setSelectedArea(area);
       }
     },
     { signal }
   );
-  touchHandleContainer.addEventListener("pointerdown", (e) => {
-    if (selection && isTouchEvent(e)) {
-      const activeCellArea = context.getCellArea(selection.activeCell.r, selection.activeCell.c);
-      let previousPointedCellArea;
-      handleDrag(
-        (e2) => {
-          const area = context.getCellAreaFromPoint(e2);
-          area && !(previousPointedCellArea && areasEqual(area, previousPointedCellArea)) && _setSelection(enclosingArea(context, activeCellArea, previousPointedCellArea = area), selection.activeCell);
-        },
-        () => _setSelection(selection.areas[0])
-      );
-    } else {
-      hideTouchHandle();
-    }
-  });
+  touchHandle.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (selection && isTouchEvent(e)) {
+        const activeCellArea = context.getCellArea(selection.activeCell.r, selection.activeCell.c);
+        let previousPointedCellArea;
+        handleDrag(
+          (e2) => {
+            const area = context.getCellAreaFromPoint(e2);
+            area && !(previousPointedCellArea && areasEqual(area, previousPointedCellArea)) && setSelectedArea(enclosingArea(context, activeCellArea, previousPointedCellArea = area), selection.activeCell);
+          },
+          () => setSelectedArea(selection.areas[0])
+        );
+      }
+    },
+    { signal }
+  );
 };
 
 // src/MakeTableSelectable/keyboardShortcuts.ts
@@ -568,7 +541,7 @@ var MakeTableSelectable = class {
       signal
     });
     handlePointerEvents(signal, context, () => this.#selection, setSelection);
-    handleTouchEvents(signal, context, setSelection);
+    handleTouchEvents(signal, context, options.renderer.touchHandle, setSelection);
   }
   keyboardShortcuts = keyboardShortcuts();
   #destroyController = new AbortController();
@@ -657,17 +630,22 @@ var createRootElement = ({
   activeArea: { fill: activeAreaFill, "fill-opacity": activeAreaFillOpacity, ...activeAreaStroke }
 }) => {
   const touchHandleStyle = { r: 6, "stroke-width": 1.5, ...touchHandle };
+  const touchHandleMarginStyle = { r: Math.max(12, touchHandleStyle.r ?? 0), fill: "transparent", "pointer-events": "fill" };
   return createSvgElement(
     "svg",
     { width: "100%", height: "100%", fill: "none" },
-    { position: "absolute", inset: "0", pointerEvents: "none" },
+    { position: "absolute", inset: "0", pointerEvents: "none", touchAction: "none" },
     [
       createSvgElement("path", inactiveArea),
       createSvgElement("path", { fill: activeAreaFill, "fill-opacity": activeAreaFillOpacity, "fill-rule": "evenodd" }),
       createSvgElement("path", { "stroke-width": 2, ...activeAreaStroke }),
       createSvgElement("path", activeCell),
-      createSvgElement("circle", touchHandleStyle),
-      createSvgElement("circle", touchHandleStyle)
+      createSvgElement("g", void 0, void 0, [
+        createSvgElement("circle", touchHandleStyle),
+        createSvgElement("circle", touchHandleStyle),
+        createSvgElement("circle", touchHandleMarginStyle),
+        createSvgElement("circle", touchHandleMarginStyle)
+      ])
     ]
   );
 };
@@ -675,20 +653,19 @@ var rectPath = (rect) => `M${rect.x} ${rect.y}h${rect.w}v${rect.h}h${-rect.w}Z`;
 var SelectionRenderer = class {
   constructor(appearance) {
     this.appearance = appearance;
+    this.touchHandle = (this.#overlayContainer = createRootElement(this.appearance)).lastElementChild;
   }
   #overlayContainer;
+  touchHandle;
   destroy() {
     this.#overlayContainer?.remove();
   }
   render(context, selection) {
-    const [
-      inactiveAreaPathElement,
-      activeAreaFillPathElement,
-      activeAreaStrokePathElement,
-      activeCellPathElement,
-      tlTouchHandle,
-      brTouchHandle
-    ] = (this.#overlayContainer ??= context.rootElement.parentElement.appendChild(createRootElement(this.appearance))).children;
+    const overlayContainer = this.#overlayContainer;
+    const [inactiveAreaPathElement, activeAreaFillPathElement, activeAreaStrokePathElement, activeCellPathElement] = overlayContainer.children;
+    if (overlayContainer.parentElement !== context.rootElement.parentElement) {
+      context.rootElement.parentElement.append(overlayContainer);
+    }
     if (selection) {
       const inactiveAreasPath = selection.areas.slice(1).map((area) => rectPath(context.getAreaRect(area)));
       const activeAreaRect = context.getAreaRect(selection.areas[0]);
@@ -700,10 +677,12 @@ var SelectionRenderer = class {
       activeAreaStrokePathElement.setAttribute("d", activeAreaPath);
       activeCellPathElement.setAttribute("d", activeCellPath);
       if (selection.touchMode) {
-        tlTouchHandle.setAttribute("cx", activeAreaRect.x);
-        tlTouchHandle.setAttribute("cy", activeAreaRect.y);
-        brTouchHandle.setAttribute("cx", activeAreaRect.x + activeAreaRect.w);
-        brTouchHandle.setAttribute("cy", activeAreaRect.y + activeAreaRect.h);
+        const [tlTouchHandleElement, brTouchHandleElement, tlTouchHandleMargin, brTouchHandleMargin] = this.touchHandle.children;
+        this.touchHandle.style.display = "";
+        tlTouchHandleElement.cx.baseVal.value = tlTouchHandleMargin.cx.baseVal.value = activeAreaRect.x;
+        tlTouchHandleElement.cy.baseVal.value = tlTouchHandleMargin.cy.baseVal.value = activeAreaRect.y;
+        brTouchHandleElement.cx.baseVal.value = brTouchHandleMargin.cx.baseVal.value = activeAreaRect.x + activeAreaRect.w;
+        brTouchHandleElement.cy.baseVal.value = brTouchHandleMargin.cy.baseVal.value = activeAreaRect.y + activeAreaRect.h;
       }
     } else {
       inactiveAreaPathElement.removeAttribute("d");
@@ -712,8 +691,7 @@ var SelectionRenderer = class {
       activeCellPathElement.removeAttribute("d");
     }
     if (!selection?.touchMode) {
-      tlTouchHandle.removeAttribute("cx");
-      brTouchHandle.removeAttribute("cx");
+      this.touchHandle.style.display = "none";
     }
   }
 };

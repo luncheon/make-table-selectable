@@ -37,6 +37,7 @@ export type GridContext<CellElement = unknown> = {
 };
 
 export type GridSelectionRenderer = {
+  readonly touchHandle: GlobalEventHandlers;
   readonly destroy: () => void;
   readonly render: (context: GridContext, selection: GridSelection | undefined) => void;
 };

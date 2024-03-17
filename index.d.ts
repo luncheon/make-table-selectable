@@ -35,6 +35,7 @@ type GridContext<CellElement = unknown> = {
 	readonly isNonblankCell: (r: number, c: number) => boolean;
 };
 type GridSelectionRenderer = {
+	readonly touchHandle: GlobalEventHandlers;
 	readonly destroy: () => void;
 	readonly render: (context: GridContext, selection: GridSelection | undefined) => void;
 };
@@ -87,12 +88,13 @@ type SelectionRendererAppearance = {
 	readonly activeArea: FillStrokeStyle;
 	readonly activeCell?: FillStrokeStyle;
 	readonly touchHandle: FillStrokeStyle & {
-		readonly r?: string | number;
+		readonly r?: number;
 	};
 };
 declare class SelectionRenderer implements GridSelectionRenderer {
 	#private;
 	readonly appearance: SelectionRendererAppearance;
+	readonly touchHandle: SVGGElement;
 	constructor(appearance: SelectionRendererAppearance);
 	destroy(): void;
 	render(context: GridContext, selection: GridSelection | undefined): void;
