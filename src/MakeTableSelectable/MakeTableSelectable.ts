@@ -2,7 +2,7 @@ import { handlePointerEvents } from "./handlePointerEvents.js";
 import { handleTouchEvents } from "./handleTouchEvents.js";
 import { keyboardShortcuts } from "./keyboardShortcuts.js";
 import type { GridArea, GridContext, GridSelection, GridSelectionRenderer } from "./types.js";
-import { areasEqual } from "./util.js";
+import { areasEqual, rc, singleCellSelection } from "./util.js";
 
 export class SelectedRow<CellElement> {
   readonly #context: GridContext<CellElement>;
@@ -76,6 +76,7 @@ export class MakeTableSelectable<CellElement> {
     });
     handlePointerEvents(signal, context, () => this.#selection, setSelection);
     handleTouchEvents(signal, context, options.renderer.touchHandle, setSelection);
+    context.rowCount && context.columnCount && setSelection(singleCellSelection(context, rc(0, 0)));
   }
 
   get activeCellAddress() {

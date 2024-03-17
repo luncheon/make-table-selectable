@@ -542,6 +542,7 @@ var MakeTableSelectable = class {
     });
     handlePointerEvents(signal, context, () => this.#selection, setSelection);
     handleTouchEvents(signal, context, options.renderer.touchHandle, setSelection);
+    context.rowCount && context.columnCount && setSelection(singleCellSelection(context, rc(0, 0)));
   }
   keyboardShortcuts = keyboardShortcuts();
   #destroyController = new AbortController();
