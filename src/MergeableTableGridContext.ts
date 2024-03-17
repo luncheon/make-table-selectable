@@ -6,7 +6,7 @@ export class MergeableTableGridContext implements GridContext<HTMLTableCellEleme
   #rows!: readonly (readonly HTMLTableCellElement[])[];
   #cellAreaMap!: { readonly get: (key: HTMLTableCellElement) => GridArea | undefined };
 
-  constructor(readonly rootElement: HTMLTableElement | HTMLTableSectionElement) {
+  constructor(readonly rootElement: HTMLTableElement) {
     this.refresh();
   }
 
@@ -56,10 +56,9 @@ export class MergeableTableGridContext implements GridContext<HTMLTableCellEleme
   }
 
   getCellAreaFromPoint(p: { readonly clientX: number; readonly clientY: number }) {
-    const root = this.rootElement;
     const td = document
       .elementsFromPoint(p.clientX, p.clientY)
-      .find(el => el instanceof HTMLTableCellElement && (el.parentElement === root || el.parentElement?.parentElement === root));
+      .find(el => el instanceof HTMLTableCellElement && el.parentElement?.parentElement?.parentElement === this.rootElement);
     return td && this.#cellAreaMap.get(td as HTMLTableCellElement);
   }
 }

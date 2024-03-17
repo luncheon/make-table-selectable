@@ -96,8 +96,8 @@ export declare const makeTableSelectable: (options: Omit<MakeTableSelectableOpti
 }) => MakeTableSelectable<HTMLTableCellElement>;
 export declare class MergeableTableGridContext implements GridContext<HTMLTableCellElement> {
 	#private;
-	readonly rootElement: HTMLTableElement | HTMLTableSectionElement;
-	constructor(rootElement: HTMLTableElement | HTMLTableSectionElement);
+	readonly rootElement: HTMLTableElement;
+	constructor(rootElement: HTMLTableElement);
 	get rowCount(): number;
 	get columnCount(): number;
 	refresh(): void;

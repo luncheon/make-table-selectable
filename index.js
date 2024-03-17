@@ -787,8 +787,7 @@ var MergeableTableGridContext = class {
     return { x, y, w: br.offsetLeft + br.offsetWidth - x, h: br.offsetTop + br.offsetHeight - y };
   }
   getCellAreaFromPoint(p) {
-    const root = this.rootElement;
-    const td = document.elementsFromPoint(p.clientX, p.clientY).find((el) => el instanceof HTMLTableCellElement && (el.parentElement === root || el.parentElement?.parentElement === root));
+    const td = document.elementsFromPoint(p.clientX, p.clientY).find((el) => el instanceof HTMLTableCellElement && el.parentElement?.parentElement?.parentElement === this.rootElement);
     return td && this.#cellAreaMap.get(td);
   }
 };
