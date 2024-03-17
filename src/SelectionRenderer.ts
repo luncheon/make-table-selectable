@@ -48,10 +48,10 @@ const createRootElement = ({
     { width: "100%", height: "100%", fill: "none" },
     { position: "absolute", inset: "0", pointerEvents: "none", touchAction: "none" },
     [
-      createSvgElement("path", inactiveArea),
+      createSvgElement("g", inactiveArea),
       createSvgElement("path", { fill: activeAreaFill, "fill-opacity": activeAreaFillOpacity, "fill-rule": "evenodd" }),
-      createSvgElement("path", { "stroke-width": 2, ...activeAreaStroke }),
-      createSvgElement("path", activeCell),
+      createSvgElement("rect", { "stroke-width": 2, ...activeAreaStroke }),
+      createSvgElement("rect", activeCell),
       createSvgElement("g", undefined, undefined, [
         createSvgElement("circle", touchHandleStyle),
         createSvgElement("circle", touchHandleStyle),
@@ -64,52 +64,66 @@ const createRootElement = ({
 
 const rectPath = (rect: GridRect) => `M${rect.x} ${rect.y}h${rect.w}v${rect.h}h${-rect.w}Z`;
 
+const setRectElementRect = (rectElement: SVGRectElement, rect: GridRect) => {
+  rectElement.x.baseVal.value = rect.x;
+  rectElement.y.baseVal.value = rect.y;
+  rectElement.width.baseVal.value = rect.w;
+  rectElement.height.baseVal.value = rect.h;
+};
+
 export class SelectionRenderer implements GridSelectionRenderer {
-  readonly #overlayContainer: SVGSVGElement;
+  readonly #container;
+  readonly #elements;
+  readonly #liveInactiveAreaRects;
+  readonly #touchHandles;
   readonly touchHandle;
 
   constructor(readonly appearance: SelectionRendererAppearance) {
-    this.touchHandle = (this.#overlayContainer = createRootElement(this.appearance)).lastElementChild as SVGGElement;
+    this.#container = createRootElement(this.appearance);
+    this.#elements = [...this.#container.children] as [SVGGElement, SVGPathElement, SVGRectElement, SVGRectElement, SVGGElement];
+    this.#liveInactiveAreaRects = this.#elements[0].children as HTMLCollectionOf<SVGRectElement>;
+    this.touchHandle = this.#elements[4];
+    this.#touchHandles = [...this.touchHandle.children] as [SVGCircleElement, SVGCircleElement, SVGCircleElement, SVGCircleElement];
   }
 
   destroy() {
-    this.#overlayContainer?.remove();
+    this.#container?.remove();
   }
 
   render(context: GridContext, selection: GridSelection | undefined) {
-    const overlayContainer = this.#overlayContainer;
-    const [inactiveAreaPathElement, activeAreaFillPathElement, activeAreaStrokePathElement, activeCellPathElement] =
-      overlayContainer.children as HTMLCollection & [SVGPathElement, SVGPathElement, SVGRectElement, SVGRectElement];
-    if (overlayContainer.parentElement !== context.rootElement.parentElement) {
-      context.rootElement.parentElement!.append(overlayContainer);
-    }
+    const overlayContainer = this.#container;
+    overlayContainer.parentElement !== context.rootElement.parentElement && context.rootElement.parentElement!.append(overlayContainer);
     if (selection) {
-      const inactiveAreasPath = selection.areas.slice(1).map(area => rectPath(context.getAreaRect(area)));
-      const activeAreaRect = context.getAreaRect(selection.areas[0]!);
-      const activeAreaPath = rectPath(activeAreaRect);
+      const [inactiveAreaGElement, activeAreaFillPathElement, activeAreaStrokeRectElement, activeCellRectElement] = this.#elements;
+      const areas = selection.areas;
+      const activeAreaRect = context.getAreaRect(areas[0]!);
       const activeCell = selection.activeCell;
-      const activeCellPath = rectPath(context.getAreaRect(context.getCellArea(activeCell.r, activeCell.c)));
-      inactiveAreaPathElement.setAttribute("d", inactiveAreasPath.slice(1).join(""));
-      activeAreaFillPathElement.setAttribute("d", `${activeAreaPath} ${activeCellPath}`);
-      activeAreaStrokePathElement.setAttribute("d", activeAreaPath);
-      activeCellPathElement.setAttribute("d", activeCellPath);
+      const activeCellRect = context.getAreaRect(context.getCellArea(activeCell.r, activeCell.c));
+      overlayContainer.style.display = "";
+      while (this.#liveInactiveAreaRects.length >= areas.length) {
+        inactiveAreaGElement.lastElementChild!.remove();
+      }
+      for (let i = 1; i < areas.length; i++) {
+        setRectElementRect(
+          this.#liveInactiveAreaRects[i - 1] ?? inactiveAreaGElement.appendChild(createSvgElement("rect")),
+          context.getAreaRect(areas[i]!),
+        );
+      }
+      activeAreaFillPathElement.setAttribute("d", `${rectPath(activeAreaRect)} ${rectPath(activeCellRect)}`);
+      setRectElementRect(activeAreaStrokeRectElement, activeAreaRect);
+      setRectElementRect(activeCellRectElement, activeCellRect);
       if (selection.touchMode) {
-        const [tlTouchHandleElement, brTouchHandleElement, tlTouchHandleMargin, brTouchHandleMargin] = this.touchHandle
-          .children as HTMLCollection & [SVGCircleElement, SVGCircleElement, SVGCircleElement, SVGCircleElement];
+        const [tlTouchHandleElement, brTouchHandleElement, tlTouchHandleMargin, brTouchHandleMargin] = this.#touchHandles;
         this.touchHandle.style.display = "";
         tlTouchHandleElement.cx.baseVal.value = tlTouchHandleMargin.cx.baseVal.value = activeAreaRect.x;
         tlTouchHandleElement.cy.baseVal.value = tlTouchHandleMargin.cy.baseVal.value = activeAreaRect.y;
         brTouchHandleElement.cx.baseVal.value = brTouchHandleMargin.cx.baseVal.value = activeAreaRect.x + activeAreaRect.w;
         brTouchHandleElement.cy.baseVal.value = brTouchHandleMargin.cy.baseVal.value = activeAreaRect.y + activeAreaRect.h;
+      } else {
+        this.touchHandle.style.display = "none";
       }
     } else {
-      inactiveAreaPathElement.removeAttribute("d");
-      activeAreaFillPathElement.removeAttribute("d");
-      activeAreaStrokePathElement.removeAttribute("d");
-      activeCellPathElement.removeAttribute("d");
-    }
-    if (!selection?.touchMode) {
-      this.touchHandle.style.display = "none";
+      overlayContainer.style.display = "none";
     }
   }
 }
