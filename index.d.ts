@@ -74,6 +74,7 @@ declare class MakeTableSelectable<CellElement> {
 	keydown(e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey">): boolean;
 }
 type FillStrokeStyle = {
+	readonly class?: string;
 	readonly fill?: string;
 	readonly "fill-opacity"?: string;
 	readonly stroke?: string;
@@ -84,10 +85,11 @@ type FillStrokeStyle = {
 	readonly "stroke-dashoffset"?: string;
 };
 type SelectionRendererAppearance = {
-	readonly inactiveArea: FillStrokeStyle;
-	readonly activeArea: FillStrokeStyle;
+	readonly inactiveArea?: FillStrokeStyle;
+	readonly activeArea?: FillStrokeStyle;
+	readonly activeAreaExcludingActiveCell?: FillStrokeStyle;
 	readonly activeCell?: FillStrokeStyle;
-	readonly touchHandle: FillStrokeStyle & {
+	readonly touchHandle?: FillStrokeStyle & {
 		readonly r?: number;
 	};
 };

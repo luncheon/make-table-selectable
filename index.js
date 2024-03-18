@@ -626,11 +626,12 @@ var createSvgElement = (qualifiedName, attributes, styles, children) => {
 };
 var createRootElement = ({
   inactiveArea,
+  activeArea,
+  activeAreaExcludingActiveCell,
   activeCell,
-  touchHandle,
-  activeArea: { fill: activeAreaFill, "fill-opacity": activeAreaFillOpacity, ...activeAreaStroke }
+  touchHandle
 }) => {
-  const touchHandleStyle = { r: 6, "stroke-width": 1.5, ...touchHandle };
+  const touchHandleStyle = { r: 6, ...touchHandle };
   const touchHandleMarginStyle = { r: Math.max(12, touchHandleStyle.r ?? 0), fill: "transparent", "pointer-events": "fill" };
   return createSvgElement(
     "svg",
@@ -638,8 +639,8 @@ var createRootElement = ({
     { position: "absolute", inset: "0", pointerEvents: "none", touchAction: "none" },
     [
       createSvgElement("g", inactiveArea),
-      createSvgElement("path", { fill: activeAreaFill, "fill-opacity": activeAreaFillOpacity, "fill-rule": "evenodd" }),
-      createSvgElement("rect", { "stroke-width": 2, ...activeAreaStroke }),
+      createSvgElement("path", { ...activeArea, "fill-rule": "evenodd" }),
+      createSvgElement("rect", activeAreaExcludingActiveCell),
       createSvgElement("rect", activeCell),
       createSvgElement("g", void 0, void 0, [
         createSvgElement("circle", touchHandleStyle),

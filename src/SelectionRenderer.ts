@@ -1,6 +1,7 @@
 import type { GridContext, GridRect, GridSelection, GridSelectionRenderer } from "./MakeTableSelectable/types.js";
 
 export type FillStrokeStyle = {
+  readonly class?: string;
   readonly fill?: string;
   readonly "fill-opacity"?: string;
   readonly stroke?: string;
@@ -12,10 +13,11 @@ export type FillStrokeStyle = {
 };
 
 export type SelectionRendererAppearance = {
-  readonly inactiveArea: FillStrokeStyle;
-  readonly activeArea: FillStrokeStyle;
+  readonly inactiveArea?: FillStrokeStyle;
+  readonly activeArea?: FillStrokeStyle;
+  readonly activeAreaExcludingActiveCell?: FillStrokeStyle;
   readonly activeCell?: FillStrokeStyle;
-  readonly touchHandle: FillStrokeStyle & { readonly r?: number };
+  readonly touchHandle?: FillStrokeStyle & { readonly r?: number };
 };
 
 const createSvgElement = <K extends keyof SVGElementTagNameMap>(
@@ -37,11 +39,12 @@ const createSvgElement = <K extends keyof SVGElementTagNameMap>(
 
 const createRootElement = ({
   inactiveArea,
+  activeArea,
+  activeAreaExcludingActiveCell,
   activeCell,
   touchHandle,
-  activeArea: { fill: activeAreaFill, "fill-opacity": activeAreaFillOpacity, ...activeAreaStroke },
 }: SelectionRendererAppearance) => {
-  const touchHandleStyle = { r: 6, "stroke-width": 1.5, ...touchHandle };
+  const touchHandleStyle = { r: 6, ...touchHandle };
   const touchHandleMarginStyle = { r: Math.max(12, touchHandleStyle.r ?? 0), fill: "transparent", "pointer-events": "fill" };
   return createSvgElement(
     "svg",
@@ -49,8 +52,8 @@ const createRootElement = ({
     { position: "absolute", inset: "0", pointerEvents: "none", touchAction: "none" },
     [
       createSvgElement("g", inactiveArea),
-      createSvgElement("path", { fill: activeAreaFill, "fill-opacity": activeAreaFillOpacity, "fill-rule": "evenodd" }),
-      createSvgElement("rect", { "stroke-width": 2, ...activeAreaStroke }),
+      createSvgElement("path", { ...activeArea, "fill-rule": "evenodd" }),
+      createSvgElement("rect", activeAreaExcludingActiveCell),
       createSvgElement("rect", activeCell),
       createSvgElement("g", undefined, undefined, [
         createSvgElement("circle", touchHandleStyle),

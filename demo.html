@@ -64,8 +64,9 @@
         context: new MergeableTableGridContext(table),
         appearance: {
           inactiveArea: { fill: "#1112" },
-          activeArea: { fill: "#1112", stroke: "#284" },
-          touchHandle: { fill: "white", stroke: "#284" },
+          activeArea: { fill: "#1112" },
+          activeAreaExcludingActiveCell: { "stroke-width": 2, stroke: "#284" },
+          touchHandle: { "stroke-width": 1.5, fill: "white", stroke: "#284" },
         },
         keyboardEventTarget: window,
         onModeChanged: () => {
