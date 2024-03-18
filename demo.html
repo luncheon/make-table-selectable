@@ -74,12 +74,6 @@
           c1: c0 + randomInt(1, 4),
         });
       }
-      // for (let i = 0; i < 5; i++) {
-      //   const row = tbody.rows[Math.floor(Math.random() * tbody.rows.length)];
-      //   const cell =
-      //     row.cells[Math.floor(Math.random() * (row.cells.length - 3)) + 1];
-      //   cell.colSpan = 3;
-      // }
 
       const modeElement = document.body.appendChild(
         document.createElement("div")
@@ -99,6 +93,7 @@
           touchHandle: { "stroke-width": 1.5, fill: "white", stroke: "#284" },
         },
         keyboardEventTarget: window,
+        // document.body.appendChild(document.createElement("input")),
         onModeChanged: () => {
           modeElement.textContent = [
             selectable.endMode && "End mode",

@@ -69,13 +69,16 @@ export class MakeTableSelectable<CellElement> {
   constructor(readonly options: MakeTableSelectableOptions<CellElement>) {
     const signal = this.#destroyController.signal;
     const context = options.context;
+    const rootElement = context.rootElement;
+    const keyboardEventTarget = options.keyboardEventTarget;
     const setSelection = (selection: GridSelection) => this.#setSelection(selection);
     this.render();
-    (options.keyboardEventTarget ?? context.rootElement).addEventListener("keydown", e => this.keydown(e) && e.preventDefault(), {
-      signal,
-    });
+    (keyboardEventTarget ?? rootElement).addEventListener("keydown", e => this.keydown(e) && e.preventDefault(), { signal });
     handlePointerEvents(signal, context, () => this.#selection, setSelection);
     handleTouchEvents(signal, context, options.renderer.touchHandle, setSelection);
+    keyboardEventTarget instanceof HTMLElement &&
+      !keyboardEventTarget.contains(rootElement) &&
+      rootElement.addEventListener("pointerdown", () => keyboardEventTarget.focus(), { signal });
     context.rowCount && context.columnCount && setSelection(singleCellSelection(context, rc(0, 0)));
   }
 
