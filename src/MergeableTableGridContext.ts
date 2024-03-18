@@ -49,10 +49,10 @@ export class MergeableTableGridContext implements GridContext<HTMLTableCellEleme
 
   getAreaRect(area: GridArea) {
     const rows = this.#rows;
-    const tl = rows[area.r0]![area.c0]!;
+    const { offsetLeft: rootX, offsetTop: rootY } = this.rootElement;
+    const { offsetLeft: x, offsetTop: y } = rows[area.r0]![area.c0]!;
     const br = rows[area.r1]![area.c1]!;
-    const { offsetLeft: x, offsetTop: y } = tl;
-    return { x, y, w: br.offsetLeft + br.offsetWidth - x, h: br.offsetTop + br.offsetHeight - y };
+    return { x: rootX + x, y: rootY + y, w: br.offsetLeft + br.offsetWidth - x, h: br.offsetTop + br.offsetHeight - y };
   }
 
   getCellAreaFromPoint(p: { readonly clientX: number; readonly clientY: number }) {
