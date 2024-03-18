@@ -8,6 +8,7 @@
   "type": "module",
   "main": "index.js",
   "types": "index.d.ts",
+  "sideEffects": false,
   "scripts": {
     "check": "biome check src && tsc -p .",
     "build": "npm run check && node build.js",
