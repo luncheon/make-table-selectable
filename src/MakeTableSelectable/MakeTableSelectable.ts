@@ -76,7 +76,7 @@ export class MakeTableSelectable<CellElement> {
     });
     handlePointerEvents(signal, context, () => this.#selection, setSelection);
     handleTouchEvents(signal, context, options.renderer.touchHandle, setSelection);
-    context.rowCount && context.columnCount && setSelection(singleCellSelection(context, rc(0, 0)));
+    context.rowCount && context.columnCount && setSelection(singleCellSelection(context, rc(0, 1)));
   }
 
   get activeCellAddress() {

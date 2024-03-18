@@ -19,10 +19,12 @@ export class MergeableTableGridContext implements GridContext<HTMLTableCellEleme
   }
 
   refresh() {
-    const rows = despan(this.rootElement);
+    const rows = Array.prototype.flatMap.call(this.rootElement.tBodies, despan) as ReturnType<typeof despan>;
+    const columnHeaderCount = rows[0]?.findIndex(cell => cell.tagName === "TD") ?? 0;
     const cellAreaMap = new WeakMap<HTMLTableCellElement, GridArea>();
     for (let r = 0; r < rows.length; r++) {
       const cells = rows[r]!;
+      cells.splice(0, columnHeaderCount);
       for (let c = 0; c < cells.length; c++) {
         const element = cells[c];
         if (element) {

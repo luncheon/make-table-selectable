@@ -542,7 +542,7 @@ var MakeTableSelectable = class {
     });
     handlePointerEvents(signal, context, () => this.#selection, setSelection);
     handleTouchEvents(signal, context, options.renderer.touchHandle, setSelection);
-    context.rowCount && context.columnCount && setSelection(singleCellSelection(context, rc(0, 0)));
+    context.rowCount && context.columnCount && setSelection(singleCellSelection(context, rc(0, 1)));
   }
   keyboardShortcuts = keyboardShortcuts();
   #destroyController = new AbortController();
@@ -757,10 +757,12 @@ var MergeableTableGridContext = class {
     return this.#rows[0]?.length ?? 0;
   }
   refresh() {
-    const rows = despan(this.rootElement);
+    const rows = Array.prototype.flatMap.call(this.rootElement.tBodies, despan);
+    const columnHeaderCount = rows[0]?.findIndex((cell) => cell.tagName === "TD") ?? 0;
     const cellAreaMap = /* @__PURE__ */ new WeakMap();
     for (let r = 0; r < rows.length; r++) {
       const cells = rows[r];
+      cells.splice(0, columnHeaderCount);
       for (let c = 0; c < cells.length; c++) {
         const element = cells[c];
         if (element) {
