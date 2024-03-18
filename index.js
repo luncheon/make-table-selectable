@@ -774,6 +774,27 @@ var MergeableTableGridContext = class {
     this.#rows = rows;
     this.#cellAreaMap = cellAreaMap;
   }
+  merge(area) {
+    area = normalizeExtendedArea(this, area);
+    const baseCell = this.getCellElement(area.r0, area.c0);
+    if (!baseCell) {
+      return;
+    }
+    const removedCells = /* @__PURE__ */ new Set();
+    for (let r = area.r0; r <= area.r1; r++) {
+      for (let c = area.c0; c <= area.c1; c++) {
+        const cell = this.getCellElement(r, c);
+        cell && removedCells.add(cell);
+      }
+    }
+    removedCells.delete(baseCell);
+    for (const cell of removedCells) {
+      cell.remove();
+    }
+    baseCell.rowSpan = area.r1 - area.r0 + 1;
+    baseCell.colSpan = area.c1 - area.c0 + 1;
+    this.refresh();
+  }
   getCellElement(r, c) {
     return this.#rows[r]?.[c];
   }

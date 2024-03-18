@@ -103,6 +103,7 @@ export declare class MergeableTableGridContext implements GridContext<HTMLTableC
 	get rowCount(): number;
 	get columnCount(): number;
 	refresh(): void;
+	merge(area: GridArea): void;
 	getCellElement(r: number, c: number): HTMLTableCellElement | undefined;
 	isNonblankCell(r: number, c: number): boolean;
 	getCellArea(r: number, c: number): GridArea;

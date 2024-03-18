@@ -1,6 +1,6 @@
 import { despan } from "despan";
 import type { GridArea, GridContext } from "./MakeTableSelectable/types.js";
-import { tlbr } from "./MakeTableSelectable/util.js";
+import { normalizeExtendedArea, tlbr } from "./MakeTableSelectable/util.js";
 
 export class MergeableTableGridContext implements GridContext<HTMLTableCellElement> {
   #rows!: readonly (readonly HTMLTableCellElement[])[];
@@ -35,6 +35,28 @@ export class MergeableTableGridContext implements GridContext<HTMLTableCellEleme
     }
     this.#rows = rows;
     this.#cellAreaMap = cellAreaMap;
+  }
+
+  merge(area: GridArea) {
+    area = normalizeExtendedArea(this, area);
+    const baseCell = this.getCellElement(area.r0, area.c0);
+    if (!baseCell) {
+      return;
+    }
+    const removedCells = new Set<HTMLTableCellElement>();
+    for (let r = area.r0; r <= area.r1; r++) {
+      for (let c = area.c0; c <= area.c1; c++) {
+        const cell = this.getCellElement(r, c);
+        cell && removedCells.add(cell);
+      }
+    }
+    removedCells.delete(baseCell);
+    for (const cell of removedCells) {
+      cell.remove();
+    }
+    baseCell.rowSpan = area.r1 - area.r0 + 1;
+    baseCell.colSpan = area.c1 - area.c0 + 1;
+    this.refresh();
   }
 
   getCellElement(r: number, c: number) {
