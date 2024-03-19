@@ -21,6 +21,13 @@ var handleDrag = (onMove, onEnd) => {
   addEventListener("pointercancel", abort, listenerOptions);
   addEventListener("pointermove", onMove, listenerOptions);
 };
+var handleDragArea = (context, onMove, onEnd) => {
+  let previousPointedCellArea;
+  handleDrag((e) => {
+    const area = context.getCellAreaFromPoint(e, true);
+    area && !(previousPointedCellArea && areasEqual(area, previousPointedCellArea)) && onMove(area);
+  }, onEnd);
+};
 var mergeArea = (a, b) => {
   a.r0 = Math.min(a.r0, b.r0);
   a.c0 = Math.min(a.c0, b.c0);
@@ -55,7 +62,6 @@ var handlePointerEvents = (signal, context, getSelection, setSelection) => (
         return;
       }
       let activeCellArea = context.getCellAreaFromPoint(e);
-      let previousPointedCellArea = activeCellArea;
       let selection = getSelection();
       if (!activeCellArea || e.button === 2 && selection?.areas.some((area) => areaContainsCell(area, rc(activeCellArea.r0, activeCellArea.c0)))) {
         return;
@@ -77,13 +83,13 @@ var handlePointerEvents = (signal, context, getSelection, setSelection) => (
         selection = { areas: [activeCellArea, ...selection.areas], activeCell: rc(activeCellArea.r0, activeCellArea.c0) };
       }
       setSelection(selection);
-      handleDrag((e2) => {
-        const area = context.getCellAreaFromPoint(e2, true);
-        area && !areasEqual(area, previousPointedCellArea) && setSelection({
-          areas: [enclosingArea(context, activeCellArea, previousPointedCellArea = area), ...selection.areas.slice(1)],
+      handleDragArea(
+        context,
+        (area) => setSelection({
+          areas: [enclosingArea(context, activeCellArea, area), ...selection.areas.slice(1)],
           activeCell: selection.activeCell
-        });
-      });
+        })
+      );
     },
     { signal }
   )
@@ -108,12 +114,9 @@ var handleTouchEvents = (signal, context, touchHandle, setSelection) => {
     (e) => {
       if (selection && isTouchEvent(e)) {
         const activeCellArea = context.getCellArea(selection.activeCell.r, selection.activeCell.c);
-        let previousPointedCellArea;
-        handleDrag(
-          (e2) => {
-            const area = context.getCellAreaFromPoint(e2, true);
-            area && !(previousPointedCellArea && areasEqual(area, previousPointedCellArea)) && setSelectedArea(enclosingArea(context, activeCellArea, previousPointedCellArea = area), selection.activeCell);
-          },
+        handleDragArea(
+          context,
+          (area) => setSelectedArea(enclosingArea(context, activeCellArea, area), selection.activeCell),
           () => setSelectedArea(selection.areas[0])
         );
       }

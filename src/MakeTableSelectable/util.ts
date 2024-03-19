@@ -14,7 +14,7 @@ export const areaContainsCell = (area: GridArea, { r, c }: GridCell) => r >= are
 
 export const isTouchEvent = (e: PointerEvent) => e.pointerType === "touch" || e.pointerType === "pen";
 
-export const handleDrag = (onMove: (e: PointerEvent) => unknown, onEnd?: (e: PointerEvent) => unknown) => {
+const handleDrag = (onMove: (e: PointerEvent) => unknown, onEnd?: (e: PointerEvent) => unknown) => {
   const abortController = new AbortController();
   const abort = (e: PointerEvent) => {
     abortController.abort();
@@ -26,6 +26,13 @@ export const handleDrag = (onMove: (e: PointerEvent) => unknown, onEnd?: (e: Poi
   addEventListener("pointerup", abort, listenerOptions);
   addEventListener("pointercancel", abort, listenerOptions);
   addEventListener("pointermove", onMove, listenerOptions);
+};
+export const handleDragArea = (context: GridContext, onMove: (area: GridArea) => unknown, onEnd?: () => unknown) => {
+  let previousPointedCellArea: GridArea | undefined;
+  handleDrag(e => {
+    const area = context.getCellAreaFromPoint(e, true);
+    area && !(previousPointedCellArea && areasEqual(area, previousPointedCellArea)) && onMove(area);
+  }, onEnd);
 };
 
 type Writable<T> = { -readonly [K in keyof T]: T[K] };

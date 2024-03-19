@@ -1,5 +1,5 @@
 import type { GridContext, GridSelection } from "./types.js";
-import { areaContainsCell, areasEqual, enclosingArea, handleDrag, isTouchEvent, rc } from "./util.js";
+import { areaContainsCell, enclosingArea, handleDragArea, isTouchEvent, rc } from "./util.js";
 
 export const handlePointerEvents = (
   signal: AbortSignal,
@@ -15,7 +15,6 @@ export const handlePointerEvents = (
         return;
       }
       let activeCellArea = context.getCellAreaFromPoint(e);
-      let previousPointedCellArea = activeCellArea;
       let selection = getSelection();
       if (
         !activeCellArea ||
@@ -41,15 +40,12 @@ export const handlePointerEvents = (
         selection = { areas: [activeCellArea, ...selection.areas], activeCell: rc(activeCellArea.r0, activeCellArea.c0) };
       }
       setSelection(selection);
-      handleDrag(e => {
-        const area = context.getCellAreaFromPoint(e, true);
-        area &&
-          !areasEqual(area, previousPointedCellArea!) &&
-          setSelection({
-            areas: [enclosingArea(context, activeCellArea, (previousPointedCellArea = area)), ...selection.areas.slice(1)],
-            activeCell: selection.activeCell,
-          });
-      });
+      handleDragArea(context, area =>
+        setSelection({
+          areas: [enclosingArea(context, activeCellArea, area), ...selection.areas.slice(1)],
+          activeCell: selection.activeCell,
+        }),
+      );
     },
     { signal },
   );

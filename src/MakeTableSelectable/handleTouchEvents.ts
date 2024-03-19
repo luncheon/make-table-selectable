@@ -1,5 +1,5 @@
 import type { GridArea, GridCell, GridContext, GridSelection } from "./types.js";
-import { areasEqual, enclosingArea, handleDrag, isTouchEvent, rc } from "./util.js";
+import { enclosingArea, handleDragArea, isTouchEvent, rc } from "./util.js";
 
 export const handleTouchEvents = (
   signal: AbortSignal,
@@ -27,14 +27,9 @@ export const handleTouchEvents = (
     e => {
       if (selection && isTouchEvent(e)) {
         const activeCellArea = context.getCellArea(selection.activeCell.r, selection.activeCell.c);
-        let previousPointedCellArea: GridArea | undefined;
-        handleDrag(
-          e => {
-            const area = context.getCellAreaFromPoint(e, true);
-            area &&
-              !(previousPointedCellArea && areasEqual(area, previousPointedCellArea)) &&
-              setSelectedArea(enclosingArea(context, activeCellArea, (previousPointedCellArea = area)), selection!.activeCell);
-          },
+        handleDragArea(
+          context,
+          area => setSelectedArea(enclosingArea(context, activeCellArea, area), selection!.activeCell),
           () => setSelectedArea(selection!.areas[0]!),
         );
       }
