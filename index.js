@@ -51,16 +51,16 @@ var handlePointerEvents = (signal, context, getSelection, setSelection) => (
   context.rootElement.addEventListener(
     "pointerdown",
     (e) => {
-      if (isTouchEvent(e)) {
+      if (isTouchEvent(e) || e.button !== 0 && e.button !== 2) {
         return;
       }
       let activeCellArea = context.getCellAreaFromPoint(e);
       let previousPointedCellArea = activeCellArea;
-      if (!activeCellArea) {
+      let selection = getSelection();
+      if (!activeCellArea || e.button === 2 && selection?.areas.some((area) => areaContainsCell(area, rc(activeCellArea.r0, activeCellArea.c0)))) {
         return;
       }
       e.button === 0 && e.preventDefault();
-      let selection = getSelection();
       if (!selection || (e.ctrlKey || e.metaKey) === e.shiftKey) {
         selection = { areas: [activeCellArea], activeCell: rc(activeCellArea.r0, activeCellArea.c0) };
       } else if (e.shiftKey) {
