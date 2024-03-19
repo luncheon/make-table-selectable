@@ -42,12 +42,12 @@ export const normalizeExtendedArea = (context: GridContext, area: GridArea) => {
   do {
     area = { ...newArea };
     for (let r = newArea.r0; r <= newArea.r1; r++) {
-      mergeArea(newArea, context.getCellArea(r, newArea.c0));
-      mergeArea(newArea, context.getCellArea(r, newArea.c1));
+      mergeArea(newArea, context.getCellArea(r, area.c0));
+      mergeArea(newArea, context.getCellArea(r, area.c1));
     }
     for (let c = newArea.c0; c <= newArea.c1; c++) {
-      mergeArea(newArea, context.getCellArea(newArea.r0, c));
-      mergeArea(newArea, context.getCellArea(newArea.r1, c));
+      mergeArea(newArea, context.getCellArea(area.r0, c));
+      mergeArea(newArea, context.getCellArea(area.r1, c));
     }
   } while (
     !areasEqual(area, newArea) &&
