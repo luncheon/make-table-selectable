@@ -42,7 +42,7 @@ export const handlePointerEvents = (
       }
       setSelection(selection);
       handleDrag(e => {
-        const area = context.getCellAreaFromPoint(e);
+        const area = context.getCellAreaFromPoint(e, true);
         area &&
           !areasEqual(area, previousPointedCellArea!) &&
           setSelection({

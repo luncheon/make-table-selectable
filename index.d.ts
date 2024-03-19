@@ -21,16 +21,17 @@ type GridSelection = {
 	readonly extendMode?: boolean;
 	readonly touchMode?: boolean;
 };
+type GridPoint = {
+	readonly clientX: number;
+	readonly clientY: number;
+};
 type GridContext<CellElement = unknown> = {
 	readonly rootElement: GlobalEventHandlers & Element;
 	readonly rowCount: number;
 	readonly columnCount: number;
 	readonly getCellElement: (r: number, c: number) => CellElement | undefined;
 	readonly getCellArea: (r: number, c: number) => GridArea;
-	readonly getCellAreaFromPoint: (p: {
-		readonly clientX: number;
-		readonly clientY: number;
-	}) => GridArea | undefined;
+	readonly getCellAreaFromPoint: (p: GridPoint, searchNearest?: boolean) => GridArea | undefined;
 	readonly getAreaRect: (area: GridArea) => GridRect;
 	readonly isNonblankCell: (r: number, c: number) => boolean;
 };
@@ -113,10 +114,7 @@ export declare class MergeableTableGridContext implements GridContext<HTMLTableC
 		w: number;
 		h: number;
 	};
-	getCellAreaFromPoint(p: {
-		readonly clientX: number;
-		readonly clientY: number;
-	}): GridArea | undefined;
+	getCellAreaFromPoint(p: GridPoint, searchNearest?: boolean): GridArea | undefined;
 }
 
 export {};

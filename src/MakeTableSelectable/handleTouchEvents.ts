@@ -30,7 +30,7 @@ export const handleTouchEvents = (
         let previousPointedCellArea: GridArea | undefined;
         handleDrag(
           e => {
-            const area = context.getCellAreaFromPoint(e);
+            const area = context.getCellAreaFromPoint(e, true);
             area &&
               !(previousPointedCellArea && areasEqual(area, previousPointedCellArea)) &&
               setSelectedArea(enclosingArea(context, activeCellArea, (previousPointedCellArea = area)), selection!.activeCell);

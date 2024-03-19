@@ -1,5 +1,5 @@
 import { despan } from "despan";
-import type { GridArea, GridContext } from "./MakeTableSelectable/types.js";
+import type { GridArea, GridContext, GridPoint } from "./MakeTableSelectable/types.js";
 import { normalizeExtendedArea, tlbr } from "./MakeTableSelectable/util.js";
 
 export class MergeableTableGridContext implements GridContext<HTMLTableCellElement> {
@@ -79,9 +79,27 @@ export class MergeableTableGridContext implements GridContext<HTMLTableCellEleme
     return { x: rootX + x, y: rootY + y, w: br.offsetLeft + br.offsetWidth - x, h: br.offsetTop + br.offsetHeight - y };
   }
 
-  getCellAreaFromPoint(p: { readonly clientX: number; readonly clientY: number }) {
+  getCellAreaFromPoint(p: GridPoint, searchNearest?: boolean) {
+    const rows = this.#rows;
+    if (!rows[0]?.[0]) {
+      return;
+    }
+    const area = this.#getCellAreaFromPoint(p.clientX, p.clientY);
+    if (area || !searchNearest) {
+      return area;
+    }
+    const tl = rows[0][0].getBoundingClientRect();
+    const br = rows.at(-1)!.at(-1)!.getBoundingClientRect();
+    const r = p.clientY < tl.y ? 0 : p.clientY > br.bottom ? rows[0].length - 1 : this.#getCellAreaFromPoint(tl.x, p.clientY)?.r0;
+    const c = p.clientX < tl.x ? 0 : p.clientX > br.right ? rows.length - 1 : this.#getCellAreaFromPoint(p.clientX, tl.y)?.c0;
+    if (r !== undefined && c !== undefined) {
+      return this.getCellArea(r, c);
+    }
+  }
+
+  #getCellAreaFromPoint(clientX: number, clientY: number) {
     const td = document
-      .elementsFromPoint(p.clientX, p.clientY)
+      .elementsFromPoint(clientX, clientY)
       .find(el => el instanceof HTMLTableCellElement && el.parentElement?.parentElement?.parentElement === this.rootElement);
     return td && this.#cellAreaMap.get(td as HTMLTableCellElement);
   }

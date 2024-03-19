@@ -25,13 +25,18 @@ export type GridSelection = {
   readonly touchMode?: boolean;
 };
 
+export type GridPoint = {
+  readonly clientX: number;
+  readonly clientY: number;
+};
+
 export type GridContext<CellElement = unknown> = {
   readonly rootElement: GlobalEventHandlers & Element;
   readonly rowCount: number;
   readonly columnCount: number;
   readonly getCellElement: (r: number, c: number) => CellElement | undefined;
   readonly getCellArea: (r: number, c: number) => GridArea;
-  readonly getCellAreaFromPoint: (p: { readonly clientX: number; readonly clientY: number }) => GridArea | undefined;
+  readonly getCellAreaFromPoint: (p: GridPoint, searchNearest?: boolean) => GridArea | undefined;
   readonly getAreaRect: (area: GridArea) => GridRect;
   readonly isNonblankCell: (r: number, c: number) => boolean;
 };
