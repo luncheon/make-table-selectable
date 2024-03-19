@@ -93,7 +93,8 @@ export class SelectionRenderer implements GridSelectionRenderer {
 
   render(context: GridContext, selection: GridSelection | undefined) {
     const overlayContainer = this.#container;
-    overlayContainer.parentElement !== context.rootElement.parentElement && context.rootElement.parentElement!.append(overlayContainer);
+    const rootElement = context.rootElement;
+    overlayContainer.parentElement !== rootElement.parentElement && rootElement.parentElement!.insertBefore(overlayContainer, rootElement);
     overlayContainer.style.display = selection ? "" : "none";
     if (selection) {
       const { areas, activeCell } = selection;
